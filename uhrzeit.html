@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uhrzeit lernen</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕒</text></svg>">
+<style>
+  body {
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .top-nav {
+    width: 100%;
+    max-width: 820px;
+  }
+
+  button, label, .hint {                /* beim Ziehen nichts markieren */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  button { touch-action: manipulation; }   /* kein Zoom-Delay beim Tippen */
+
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 6vw, 44px);
+    text-align: center;
+    color: var(--ring);
+  }
+
+  /* ---------- Level-Auswahl ---------- */
+  .levels {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 820px;
+  }
+
+  .levels button {
+    font: inherit;
+    font-size: clamp(14px, 2.4vw, 18px);
+    line-height: 1.25;
+    padding: 10px 18px;
+    border: 4px solid var(--ring);
+    border-radius: 20px;
+    background: #fff;
+    color: var(--ring);
+    cursor: pointer;
+    transition: transform .12s ease, background .12s ease, color .12s ease;
+  }
+
+  @media (hover: hover) {
+    .levels button:hover { transform: translateY(-2px); }
+  }
+
+  .levels button[aria-pressed="true"] {
+    background: var(--ring);
+    color: #fff;
+  }
+
+  .levels b {
+    display: block;
+    font-size: 1.15em;
+  }
+
+  .levels small {
+    display: block;
+    font-size: .85em;
+    opacity: .8;
+  }
+
+  /* ---------- Uhr ---------- */
+  .clock-wrap {
+    padding: 12px;
+    width: 100%;
+    max-width: 444px;                        /* 420 Uhr + 2 × 12 Polster */
+  }
+
+  svg.clock {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    margin: 0 auto;
+    touch-action: none;          /* Ziehen soll die Seite nicht scrollen */
+    user-select: none;
+    cursor: grab;
+  }
+
+  svg.clock.dragging { cursor: grabbing; }
+
+  .hand {
+    /* wenig Nachschwingen: Zeiger kommen rasch zur Ruhe */
+    transition: transform .6s cubic-bezier(.25, 1.03, .4, 1);
+    transform-origin: 200px 200px;
+  }
+
+  svg.clock.stepping .hand { transition: transform .25s ease-out; }
+  svg.clock.dragging .hand { transition: none; }
+
+  .num {
+    font-size: 42px;
+    font-weight: bold;
+    fill: var(--ink);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .minnum {
+    font-size: 15px;
+    fill: var(--soft);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  /* ---------- Bedienung ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .big-btn {
+    font: inherit;
+    font-size: clamp(20px, 4vw, 28px);
+    padding: 16px 34px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #cf8544;
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+
+  .big-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #cf8544;
+  }
+
+  .big-btn.solve {
+    background: var(--minute);
+    box-shadow: 0 6px 0 #1f7c71;
+  }
+
+  .big-btn.solve:active { box-shadow: 0 2px 0 #1f7c71; }
+
+  .big-btn.small {
+    font-size: clamp(17px, 3vw, 21px);
+    padding: 11px 22px;
+  }
+
+  /* ---------- Eingabe prüfen ---------- */
+  .check-card { width: 100%; max-width: 560px; }
+
+  .check {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .check label { font-size: clamp(17px, 3vw, 21px); }
+
+  .check input {
+    font: inherit;
+    font-size: clamp(24px, 5vw, 34px);
+    width: 4.6em;
+    text-align: center;
+    padding: 8px 10px;
+    border: 4px solid var(--ring);
+    border-radius: 16px;
+    background: #fff;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+
+  .check input:focus { outline: none; border-color: var(--accent); }
+
+  .feedback {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: clamp(18px, 3.6vw, 24px);
+    line-height: 1.45;
+    min-height: 1.5em;
+  }
+
+  .feedback.good { color: var(--minute); }
+  .feedback.bad  { color: var(--hour); }
+  .feedback.info { color: var(--soft); }
+
+  .feedback .solution {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink);
+    font-size: .92em;
+  }
+
+  .answer {
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .digital {
+    font-size: clamp(34px, 8vw, 56px);
+    font-weight: bold;
+    color: var(--hour);
+    letter-spacing: 2px;
+  }
+
+  .spoken {
+    font-size: clamp(18px, 4vw, 26px);
+    cursor: pointer;
+  }
+
+  .hidden { visibility: hidden; }
+
+  .toggles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 24px;
+    width: 100%;
+  }
+
+  .toggle {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--soft);
+  }
+
+  .toggle input { width: 20px; height: 20px; cursor: pointer; }
+
+  .hint {
+    font-size: 15px;
+    color: var(--soft);
+    text-align: center;
+    width: 100%;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  .hint kbd {
+    font: inherit;
+    background: #fff;
+    border: 2px solid #c3cedb;
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    padding: 1px 8px;
+    color: var(--ink);
+  }
+
+  .hint-touch { display: none; }
+
+  /* ---------- Handy (hochkant) ---------- */
+  @media (max-width: 600px) {
+    body { padding: 14px 10px 28px; gap: 14px; }
+    h1 { font-size: 26px; }
+
+    .card { border-radius: 20px; padding: 14px; }
+    .clock-wrap { padding: 6px; }
+
+    .levels { gap: 7px; }
+    .levels button {
+      flex: 1 1 28%;                  /* 3 + 2 Knöpfe pro Zeile */
+      min-width: 0;
+      padding: 8px 6px;
+      border-width: 3px;
+      border-radius: 16px;
+      font-size: 13px;
+    }
+    .levels b { font-size: 1.1em; }
+
+    .controls { gap: 10px; width: 100%; }
+    .big-btn {
+      flex: 1 1 0;
+      font-size: 19px;
+      padding: 14px 8px;
+      box-shadow: 0 5px 0 #cf8544;
+    }
+    .big-btn.solve { box-shadow: 0 5px 0 #1f7c71; }
+
+    .check-card { width: 100%; }
+    .check { gap: 10px; }
+    .check label { flex: 1 0 100%; text-align: center; }
+    .check input { font-size: 26px; flex: 1 1 3.4em; width: auto; min-width: 0; padding: 6px 8px; }
+    .big-btn.small { flex: 0 0 auto; font-size: 17px; padding: 11px 16px; }
+
+    .feedback { font-size: 18px; margin-top: 10px; }
+    .answer { min-height: 74px; }
+    .toggles { gap: 6px 18px; }
+    .toggle { font-size: 15px; }
+
+    .hint { font-size: 14px; }
+    .hint-keys { display: none; }
+    .hint-touch { display: inline; }
+  }
+
+  /* ---------- Handy (quer): Uhr links, Bedienung rechts ---------- */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body {
+      display: grid;
+      grid-template-columns: auto minmax(240px, 420px);
+      grid-template-areas:
+        "nav    nav"
+        "title  title"
+        "levels levels"
+        "clock  controls"
+        "clock  check"
+        "clock  answer"
+        "clock  toggles"
+        "hint   hint";
+      justify-content: center;
+      align-items: center;
+      column-gap: 18px;
+      row-gap: 10px;
+      padding: 10px 12px 16px;
+    }
+
+    .top-nav { grid-area: nav; }
+    h1 { grid-area: title; font-size: 22px; }
+
+    .levels { grid-area: levels; gap: 6px; }
+    .levels button { padding: 5px 9px; border-width: 3px; border-radius: 14px; font-size: 12px; }
+    .levels b, .levels small { display: inline; font-size: 1em; }   /* einzeilig, spart Höhe */
+    .levels small::before { content: " · "; }
+
+    .clock-wrap { grid-area: clock; align-self: center; padding: 6px; width: auto; }
+    svg.clock { width: min(56vh, 300px); max-width: none; }
+
+    .controls { grid-area: controls; gap: 10px; }
+    .big-btn { font-size: 17px; padding: 11px 16px; box-shadow: 0 4px 0 #cf8544; }
+    .big-btn.solve { box-shadow: 0 4px 0 #1f7c71; }
+    .big-btn.small { font-size: 15px; padding: 9px 14px; }
+
+    .check-card { grid-area: check; width: 100%; padding: 12px; }
+    .check { gap: 8px; }
+    .check label { font-size: 15px; }
+    .check input { font-size: 20px; width: 3.4em; padding: 5px 6px; border-width: 3px; }
+    .feedback { font-size: 15px; margin-top: 8px; }
+
+    .answer { grid-area: answer; min-height: 0; }
+    .toggles { grid-area: toggles; gap: 4px 16px; }
+    .toggle { font-size: 14px; }
+    .toggle input { width: 17px; height: 17px; }
+
+    .hint { grid-area: hint; font-size: 13px; line-height: 1.4; }
+
+    .digital { font-size: 28px; }
+    .spoken { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="index.html" class="home-link">🏠 Zur Startseite</a>
+</nav>
+
+<h1>🕒 Wie spät ist es?</h1>
+
+<div class="levels" id="levels"></div>
+
+<div class="card clock-wrap">
+  <svg class="clock" viewBox="0 0 400 400" role="img" aria-label="Analoge Uhr">
+    <circle cx="200" cy="200" r="192" fill="#fff" stroke="#4361ee" stroke-width="14"/>
+    <circle cx="200" cy="200" r="176" fill="#f7fbff"/>
+
+    <g id="ticks"></g>
+    <g id="minnums"></g>
+    <g id="numbers"></g>
+
+    <!-- Minutenzeiger (lang, dünn) -->
+    <g class="hand" id="minuteHand">
+      <line x1="200" y1="215" x2="200" y2="58" stroke="#2a9d8f" stroke-width="10" stroke-linecap="round"/>
+      <polygon points="200,44 190,66 210,66" fill="#2a9d8f"/>
+    </g>
+
+    <!-- Stundenzeiger (kurz, dick) -->
+    <g class="hand" id="hourHand">
+      <line x1="200" y1="215" x2="200" y2="108" stroke="#e4572e" stroke-width="16" stroke-linecap="round"/>
+      <polygon points="200,92 187,116 213,116" fill="#e4572e"/>
+    </g>
+
+    <circle cx="200" cy="200" r="14" fill="#33404d"/>
+    <circle cx="200" cy="200" r="6" fill="#fff"/>
+  </svg>
+</div>
+
+<div class="controls">
+  <button class="big-btn" id="newTime">🎲 Neue Zeit</button>
+  <button class="big-btn solve" id="solve">👀 Lösung</button>
+</div>
+
+<div class="card check-card">
+  <div class="check">
+    <label for="guess">Deine Zeit:</label>
+    <input id="guess" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="7:45" aria-label="Uhrzeit eingeben">
+    <button class="big-btn small" id="checkBtn">✅ Prüfen</button>
+  </div>
+  <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+</div>
+
+<div class="toggles">
+  <label class="toggle">
+    <input type="checkbox" id="showMinNums" checked>
+    Minutenzahlen zeigen
+  </label>
+  <label class="toggle">
+    <input type="checkbox" id="speakOn" checked>
+    🔊 Lösung vorlesen
+  </label>
+</div>
+
+<div class="answer">
+  <div class="digital hidden" id="digital">--:--</div>
+  <div class="spoken hidden" id="spoken" title="Nochmals vorlesen"></div>
+</div>
+
+<p class="hint">
+  <span class="hint-touch">Zeiger mit dem Finger <strong>drehen</strong> · doppelt tippen rastet auf die nächste Zeit des Levels ein</span>
+  <span class="hint-keys">Zeiger mit der Maus <strong>drehen</strong> ·
+  <kbd>Leertaste</kbd> rastet auf die nächste Zeit des Levels ein ·
+  <kbd>←</kbd> <kbd>→</kbd> stellen die Uhr zur nächsten Zeit des Levels ·
+  <kbd>N</kbd> würfelt eine neue Zeit ·
+  <kbd>L</kbd> zeigt die Lösung ·
+  <kbd>Enter</kbd> im Eingabefeld prüft deine Antwort</span>
+</p>
+
+<script>
+// Minuten, die im jeweiligen Level vorkommen
+const NACH_VOR = [0, 5, 10, 15, 20, 30, 40, 45, 50, 55];
+
+const LEVELS = [
+  { label: "Ganze Stunden",  minutes: [0] },
+  { label: "Halbe Stunden",  minutes: [0, 30] },
+  { label: "Viertelstunden", minutes: [0, 15, 30, 45] },
+  { label: "Vor und nach",   minutes: NACH_VOR },
+  { label: "Alle Minuten",   minutes: Array.from({ length: 60 }, (_, i) => i) }
+];
+
+let level = 0;      // 0..4  entspricht Level 1..5
+let grid = [];      // alle im Level erlaubten Zeiten als Minuten seit 12 Uhr
+let hour = 12;      // 1..12
+let minute = 0;     // 0..59
+let hourRot = 0;    // aufsummierte Rotation, damit die Zeiger immer vorwärts laufen
+let minRot = 0;
+
+/* ---------- Zifferblatt aufbauen ---------- */
+const SVGNS = "http://www.w3.org/2000/svg";
+const ticks = document.getElementById("ticks");
+const numbers = document.getElementById("numbers");
+const minnums = document.getElementById("minnums");
+
+function polar(radius, deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [200 + radius * Math.cos(rad), 200 + radius * Math.sin(rad)];
+}
+
+for (let i = 0; i < 60; i++) {
+  const isHour = i % 5 === 0;
+  const [x1, y1] = polar(isHour ? 152 : 160, i * 6);
+  const [x2, y2] = polar(168, i * 6);
+  const line = document.createElementNS(SVGNS, "line");
+  line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+  line.setAttribute("stroke", isHour ? "#33404d" : "#c3cedb");
+  line.setAttribute("stroke-width", isHour ? 7 : 3);
+  line.setAttribute("stroke-linecap", "round");
+  ticks.appendChild(line);
+}
+
+for (let h = 1; h <= 12; h++) {
+  const [x, y] = polar(120, h * 30);
+  const t = document.createElementNS(SVGNS, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("class", "num");
+  t.textContent = h;
+  numbers.appendChild(t);
+
+  const m = h * 5;
+  const [mx, my] = polar(182, m * 6);
+  const mt = document.createElementNS(SVGNS, "text");
+  mt.setAttribute("x", mx); mt.setAttribute("y", my);
+  mt.setAttribute("class", "minnum");
+  mt.textContent = m === 60 ? "00" : String(m).padStart(2, "0");
+  minnums.appendChild(mt);
+}
+
+/* ---------- Level-Knöpfe ---------- */
+const levelsBox = document.getElementById("levels");
+
+function buildGrid() {                       // alle erlaubten Zeiten des Levels
+  const mins = LEVELS[level].minutes;
+  grid = [];
+  for (let h = 0; h < 12; h++) for (const m of mins) grid.push(h * 60 + m);
+}
+
+LEVELS.forEach((lv, i) => {
+  const b = document.createElement("button");
+  b.innerHTML = "<b>Level " + (i + 1) + "</b><small>" + lv.label + "</small>";
+  b.setAttribute("aria-pressed", i === level);
+  b.onclick = () => {
+    level = i;                               // Uhrzeit bleibt stehen
+    buildGrid();
+    [...levelsBox.children].forEach(c => c.setAttribute("aria-pressed", c === b));
+    b.blur();                                // damit die Leertaste die Uhr steuert
+  };
+  levelsBox.appendChild(b);
+});
+buildGrid();
+
+/* ---------- Zeit setzen ---------- */
+const svg = document.querySelector("svg.clock");
+const minuteHand = document.getElementById("minuteHand");
+const hourHand = document.getElementById("hourHand");
+
+function minuteAngle()  { return minute * 6; }                        // 6° pro Minute
+function hourAngle()    { return (hour % 12) * 30 + minute * 0.5; }   // Stundenzeiger wandert mit
+
+// mode: "spin" = neue Zeit, "step" = Tastenschritt, "drag" = ohne Animation
+// dir:  +1 = beide Zeiger vorwärts, -1 = beide rückwärts, 0 = kürzester Weg
+function drawHands(mode = "spin", dir = 0) {
+  minRot += turn(minuteAngle() - (minRot % 360), dir);
+  hourRot += turn(hourAngle() - (hourRot % 360), dir);
+
+  svg.classList.toggle("stepping", mode === "step");
+  svg.classList.toggle("dragging", mode === "drag");
+  minuteHand.style.transform = `rotate(${minRot}deg)`;
+  hourHand.style.transform = `rotate(${hourRot}deg)`;
+}
+
+function turn(deltaDeg, dir) {
+  if (dir === 0) return shortest(deltaDeg);
+
+  // Zeiger, die schon am Ziel stehen (z. B. der Minutenzeiger bei ganzen
+  // Stunden), drehen eine volle Runde mit – so sieht man die Stunde vergehen.
+  const d = ((deltaDeg % 360) + 360) % 360;                    // 0 … 359.9
+  if (dir > 0) return d < 0.001 ? 360 : d;                     // nur vorwärts
+  return d < 0.001 ? -360 : d - 360;                           // nur rückwärts
+}
+
+function shortest(deltaDeg) {          // Winkeldifferenz auf -180..180 bringen
+  return ((deltaDeg % 360) + 540) % 360 - 180;
+}
+
+/* Zeit als Minuten seit 12 Uhr (0..719) */
+function totalMinutes() { return (hour % 12) * 60 + minute; }
+
+function setTotal(total, mode, dir = 0) {
+  const t = ((Math.round(total) % 720) + 720) % 720;
+  const h = Math.floor(t / 60);
+  hour = h === 0 ? 12 : h;
+  minute = t % 60;
+  drawHands(mode, dir);
+  updateAnswer();
+  clearFeedback();                     // alte Rückmeldung passt nicht mehr
+}
+
+const HOUR_WORDS = ["zwölf", "eins", "zwei", "drei", "vier", "fünf", "sechs",
+                    "sieben", "acht", "neun", "zehn", "elf", "zwölf"];
+
+function spokenTime(h, m) {
+  const next = HOUR_WORDS[(h % 12) + 1];
+  const cur = HOUR_WORDS[h % 12 === 0 ? 12 : h % 12];
+  if (m === 0)  return cur + " Uhr";
+  if (m === 15) return "Viertel nach " + cur;
+  if (m === 30) return "halb " + next;
+  if (m === 45) return "Viertel vor " + next;
+  if (NACH_VOR.includes(m)) return m < 30 ? m + " nach " + cur : (60 - m) + " vor " + next;
+  return m + (m === 1 ? " Minute" : " Minuten") + " nach " + cur;   // z. B. "39 Minuten nach sieben"
+}
+
+const digital = document.getElementById("digital");
+const spoken = document.getElementById("spoken");
+
+function updateAnswer() {
+  digital.textContent = String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+  spoken.textContent = spokenTime(hour, minute);
+}
+
+function newTime() {
+  let t, tries = 0;
+  do {                                      // nicht zweimal dieselbe Zeit
+    t = grid[Math.floor(Math.random() * grid.length)];
+  } while (t === totalMinutes() && ++tries < 20);
+
+  setTotal(t, "spin", 1);                   // Zeiger drehen immer vorwärts
+  digital.classList.add("hidden");
+  spoken.classList.add("hidden");
+  guess.value = "";
+  clearFeedback();
+}
+
+/* ---------- Sprachausgabe ---------- */
+const speakOn = document.getElementById("speakOn");
+let voice = null;
+
+function pickVoice() {
+  const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  voice = voices.find(v => v.lang.toLowerCase().startsWith("de")) || null;
+}
+
+if (window.speechSynthesis) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+} else {
+  speakOn.closest(".toggle").style.display = "none";
+}
+
+function speak(text) {
+  if (!window.speechSynthesis || !speakOn.checked) return;
+  speechSynthesis.cancel();                 // laufende Ansage abbrechen
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "de-DE";
+  if (voice) u.voice = voice;
+  u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- Uhr mit der Maus drehen ---------- */
+let dragging = false, lastAngle = 0, dragAcc = 0, dragBase = 0, dragFactor = 1;
+let moved = false, startXY = [0, 0], lastTap = 0;
+
+function svgPoint(e) {
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  return [p.x - 200, p.y - 200];            // relativ zur Uhrmitte
+}
+
+function angleAt([dx, dy]) {                // 0° = 12 Uhr, im Uhrzeigersinn
+  return (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+}
+
+// Abstand des Punktes zum Zeiger (Strecke Mitte → Spitze)
+function distToHand([dx, dy], deg, len) {
+  const rad = (deg - 90) * Math.PI / 180;
+  const ex = len * Math.cos(rad), ey = len * Math.sin(rad);
+  const t = Math.max(0, Math.min(1, (dx * ex + dy * ey) / (len * len)));
+  return Math.hypot(dx - t * ex, dy - t * ey);
+}
+
+svg.addEventListener("pointerdown", e => {
+  const p = svgPoint(e);
+  if (Math.hypot(p[0], p[1]) < 14) return;  // Mitte: kein Winkel bestimmbar
+
+  // näher am Minuten- oder am Stundenzeiger?
+  const dMin = distToHand(p, minuteAngle(), 156);
+  const dHour = distToHand(p, hourAngle(), 108);
+  dragFactor = dMin <= dHour ? 1 / 6 : 2;   // Minuten pro gedrehtem Grad
+
+  dragging = true;
+  moved = false;
+  startXY = [e.clientX, e.clientY];
+  lastAngle = angleAt(p);
+  dragAcc = 0;
+  dragBase = totalMinutes();
+  svg.setPointerCapture(e.pointerId);
+  svg.classList.add("dragging");
+  e.preventDefault();
+});
+
+svg.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  if (Math.hypot(e.clientX - startXY[0], e.clientY - startXY[1]) > 6) moved = true;
+  const a = angleAt(svgPoint(e));
+  dragAcc += shortest(a - lastAngle) * dragFactor;
+  lastAngle = a;
+  setTotal(dragBase + dragAcc, "drag");
+});
+
+function endDrag(e) {
+  if (!dragging) return;
+  dragging = false;
+  svg.classList.remove("dragging");
+  if (svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
+
+  if (!moved && e.type === "pointerup") {   // Doppeltipp/Doppelklick rastet ein
+    const now = Date.now();
+    if (now - lastTap < 400) { snapToStep(); lastTap = 0; } else { lastTap = now; }
+  }
+}
+
+svg.addEventListener("pointerup", endDrag);
+svg.addEventListener("pointercancel", endDrag);
+
+/* ---------- Eingabe prüfen ---------- */
+const guess = document.getElementById("guess");
+const feedback = document.getElementById("feedback");
+
+// akzeptiert 7:45, 07:45, 7.45, 7,45, 7-45, 7;45, "7 45", "7 Uhr 45", 745, 0745, 19:45, 7
+function parseTime(raw) {
+  const s = raw.toLowerCase()
+               .replace(/uhr/g, " ")
+               .replace(/[.,:;\-–—\s]+/g, ":")   // alle Trennzeichen vereinheitlichen
+               .replace(/^:+|:+$/g, "");
+
+  let h, m, mt;
+  if (mt = s.match(/^(\d{1,2}):(\d{1,2})$/))      { h = +mt[1]; m = +mt[2]; }
+  else if (mt = s.match(/^(\d{1,2})$/))           { h = +mt[1]; m = 0; }
+  else if (mt = s.match(/^(\d{1,2})(\d{2})$/))    { h = +mt[1]; m = +mt[2]; }  // 745, 0745
+  else return null;
+
+  if (m > 59 || h > 24) return null;
+  return { h: h % 12 === 0 ? 12 : h % 12, m };    // 19:45 und 07:45 sind dasselbe
+}
+
+function timeText(h, m) {
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") +
+         " – " + spokenTime(h, m);
+}
+
+function say(cls, message, showSolution) {
+  feedback.className = "feedback " + cls;
+  feedback.innerHTML = message +
+    (showSolution ? '<span class="solution">Richtig ist: ' + timeText(hour, minute) + "</span>" : "");
+}
+
+function clearFeedback() {
+  feedback.className = "feedback";
+  feedback.textContent = "";
+}
+
+function checkGuess() {
+  if (!guess.value.trim()) {
+    say("info", "Gib zuerst eine Zeit ein, z. B. <strong>7:45</strong>.", false);
+    guess.focus();
+    return;
+  }
+  const input = parseTime(guess.value);
+  if (!input) {
+    say("info", "Das kann ich nicht lesen. Schreibe die Zeit z. B. als <strong>7:45</strong>, 07.45 oder 7-45.", false);
+    return;
+  }
+
+  const curTotal = totalMinutes();
+  const inTotal = (input.h % 12) * 60 + input.m;
+
+  if (inTotal === curTotal) {
+    say("good", "🎉 Richtig! Es ist " + timeText(hour, minute) + ".", false);
+    speak(spokenTime(hour, minute));
+    return;
+  }
+
+  // Zeiger vertauscht: der kurze Zeiger wurde als Minuten gelesen und umgekehrt
+  const swapH = minute % 5 === 0 ? (minute / 5 === 0 ? 12 : minute / 5) : null;
+  const minuteDiff = Math.abs(shortest((input.m - minute) * 6)) / 6;   // 0..30
+  let msg;
+
+  if (swapH !== null && input.h === swapH && input.m === (hour % 12) * 5) {
+    msg = "Fast! Du hast die Zeiger vertauscht: Der <strong>kurze</strong> Zeiger zeigt die Stunden, der <strong>lange</strong> die Minuten.";
+  } else if (input.m === minute) {
+    msg = "Die Minuten stimmen! Schau nochmals, auf welche Zahl der <strong>kurze</strong> Zeiger zeigt.";
+  } else if (input.h === hour) {
+    msg = minuteDiff <= 5
+      ? "Ganz knapp! Die Stunde stimmt, die Minuten sind nur " + minuteDiff + " daneben."
+      : "Die Stunde stimmt! Schau nochmals auf den <strong>langen</strong> Zeiger.";
+  } else if (Math.abs(shortest((inTotal - curTotal) * 0.5)) * 2 <= 5) {
+    msg = "Ganz knapp daneben!";
+  } else {
+    msg = "Das stimmt leider noch nicht.";
+  }
+
+  say("bad", msg, true);
+  speak(spokenTime(hour, minute));
+}
+
+document.getElementById("checkBtn").onclick = checkGuess;
+
+guess.oninput = () => {
+  const pos = guess.selectionStart;                    // Trennzeichen sofort zu ":" machen
+  let v = guess.value.replace(/[.,;:\-–—\s]/g, ":");   // 1:1-Ersatz, Cursor bleibt stehen
+  if (v !== guess.value) { guess.value = v; guess.setSelectionRange(pos, pos); }
+  clearFeedback();
+};
+
+/* ---------- Tastatur ---------- */
+function circDiff(a, b) {                   // kürzester Abstand auf dem 12-Stunden-Kreis
+  return ((a - b) % 720 + 1080) % 720 - 360;
+}
+
+function snapToStep() {                     // nächstgelegene gültige Zeit im Level
+  const t = totalMinutes();
+  let best = grid[0], bd = Infinity;
+  for (const g of grid) {
+    const d = Math.abs(circDiff(g, t));
+    if (d < bd) { bd = d; best = g; }
+  }
+  setTotal(best, "step");
+}
+
+function stepTime(dir) {                    // eine gültige Zeit vor (+1) oder zurück (-1)
+  const t = totalMinutes();
+  let best = grid[0], bd = Infinity;
+  for (const g of grid) {
+    let d = circDiff(g, t);
+    if (dir > 0 ? d <= 0 : d >= 0) d += dir > 0 ? 720 : -720;   // nur in eine Richtung suchen
+    if (Math.abs(d) < bd) { bd = Math.abs(d); best = g; }
+  }
+  setTotal(best, "step", dir);               // beide Zeiger in Schrittrichtung drehen
+}
+
+document.addEventListener("keydown", e => {
+  if (e.target === guess) {                 // im Eingabefeld nur Enter abfangen
+    if (e.code === "Enter") { e.preventDefault(); checkGuess(); }
+    return;
+  }
+  if (e.target.matches("input, button") && e.code === "Space") return;  // Bedienelemente nicht blockieren
+  switch (e.code) {
+    case "Space":      e.preventDefault(); snapToStep(); break;
+    case "ArrowRight":
+    case "ArrowUp":    e.preventDefault(); stepTime(1); break;
+    case "ArrowLeft":
+    case "ArrowDown":  e.preventDefault(); stepTime(-1); break;
+    case "KeyN":       document.getElementById("newTime").click(); break;
+    case "KeyL":
+    case "Enter":      document.getElementById("solve").click(); break;
+  }
+});
+
+/* ---------- Knöpfe ---------- */
+document.getElementById("newTime").onclick = e => { e.currentTarget.blur(); newTime(); };
+document.getElementById("solve").onclick = e => {
+  e.currentTarget.blur();
+  digital.classList.remove("hidden");
+  spoken.classList.remove("hidden");
+  speak(spokenTime(hour, minute));
+};
+spoken.onclick = () => speak(spokenTime(hour, minute));
+document.getElementById("showMinNums").onchange = e => {
+  minnums.style.display = e.target.checked ? "" : "none";
+};
+
+newTime();
+</script>
+</body>
+</html>

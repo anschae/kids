@@ -1,0 +1,264 @@
+/* =========================================================
+   Gemeinsamer Stil für alle Lernseiten
+   Die Farben stammen von der Uhr, damit alle Seiten
+   zusammengehören: blauer Ring, roter Stundenzeiger,
+   grüner Minutenzeiger, oranger Knopf.
+   ========================================================= */
+
+:root {
+  --ring:        #4361ee;   /* Blau – Rahmen, Überschriften */
+  --hour:        #e4572e;   /* Rot – Stundenzeiger */
+  --minute:      #2a9d8f;   /* Grün – Minutenzeiger */
+  --minute-dark: #1f7c71;
+  --accent:      #f4a259;   /* Orange – grosse Knöpfe */
+  --accent-dark: #cf8544;
+
+  --ink:   #33404d;         /* Schrift */
+  --soft:  #7b8a9c;         /* Nebentext */
+  --line:  #c3cedb;         /* feine Linien */
+  --paper: #ffffff;
+  --bg:    #eef5ff;
+
+  --radius: 28px;
+  --shadow: 0 10px 0 rgba(51, 64, 77, .06), 0 16px 34px rgba(51, 64, 77, .12);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", "Trebuchet MS",
+               system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background-color: var(--bg);
+  /* weiche Farbwolken in den Ecken */
+  background-image:
+    radial-gradient(closest-side, rgba(244, 162,  89, .32), rgba(244, 162, 89, 0)),
+    radial-gradient(closest-side, rgba( 42, 157, 143, .28), rgba( 42, 157, 143, 0)),
+    radial-gradient(closest-side, rgba( 67,  97, 238, .24), rgba( 67,  97, 238, 0)),
+    radial-gradient(closest-side, rgba(228,  87,  46, .20), rgba(228,  87,  46, 0));
+  background-position: -10vmax -12vmax, 92% -14vmax, 88% 105%, -14vmax 92%;
+  background-size: 58vmax 58vmax, 52vmax 52vmax, 62vmax 62vmax, 48vmax 48vmax;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+h1, h2, h3 { line-height: 1.15; }
+
+/* ---------- Karten ---------- */
+.card {
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Kopfzeile mit Zurück-Knopf ---------- */
+.top-nav {
+  display: flex;
+  align-items: center;
+}
+
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(15px, 3vw, 18px);
+  padding: 10px 20px;
+  border: 3px solid var(--ring);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ring);
+  text-decoration: none;
+  box-shadow: 0 5px 0 rgba(67, 97, 238, .30);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, color .12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+@media (hover: hover) {
+  .home-link:hover {
+    background: var(--ring);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 0 rgba(67, 97, 238, .30);
+  }
+}
+
+.home-link:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(67, 97, 238, .30);
+}
+
+/* deutlich sichtbarer Fokus für die Tastatur */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 4px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   Startseite
+   ========================================================= */
+
+.page {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+}
+
+.hero { text-align: center; }
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(30px, 7vw, 52px);
+  color: var(--ring);
+}
+
+.hero p {
+  margin: 10px 0 0;
+  font-size: clamp(16px, 3.4vw, 21px);
+  color: var(--soft);
+}
+
+/* ---------- Kachel-Raster ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  width: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tile {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px 24px;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  border: 4px solid var(--paper);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .tile:hover {
+    transform: translateY(-6px);
+    border-color: var(--ring);
+    box-shadow: 0 16px 0 rgba(51, 64, 77, .06), 0 22px 40px rgba(51, 64, 77, .16);
+  }
+  .tile:hover .tile-art { transform: rotate(-3deg) scale(1.03); }
+}
+
+.tile:active { transform: translateY(-1px); }
+
+.tile-art {
+  width: 100%;
+  max-width: 230px;
+  transition: transform .2s ease;
+}
+
+.tile-art svg { display: block; width: 100%; height: auto; }
+
+.tile h2 {
+  margin: 0;
+  font-size: clamp(21px, 4.4vw, 26px);
+  color: var(--ring);
+}
+
+.tile p {
+  margin: 0;
+  font-size: clamp(15px, 3.2vw, 17px);
+  color: var(--soft);
+  line-height: 1.45;
+}
+
+.tile .go {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: clamp(16px, 3.4vw, 19px);
+  color: var(--minute);
+}
+
+/* Kacheln, die es noch nicht gibt */
+.tile.soon {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--line);
+  background: rgba(255, 255, 255, .62);
+  box-shadow: none;
+}
+
+.tile.soon .emoji {
+  font-size: clamp(54px, 13vw, 76px);
+  line-height: 1;
+  filter: grayscale(.15);
+  opacity: .85;
+}
+
+.tile.soon h2 { color: var(--soft); }
+
+.badge {
+  margin-top: auto;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--line);
+  color: #fff;
+  font-size: 14px;
+}
+
+/* ---------- Uhr-Vorschau (gleiche Uhr wie auf uhrzeit.html) ---------- */
+.clock-preview .hand { transform-origin: 200px 200px; }
+
+.clock-preview .num {
+  font-size: 42px;
+  font-weight: bold;
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.clock-preview .minnum {
+  font-size: 15px;
+  fill: var(--soft);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* ---------- Fusszeile ---------- */
+.foot {
+  margin: 0;
+  font-size: 15px;
+  color: var(--soft);
+  text-align: center;
+}
+
+/* ---------- Handy ---------- */
+@media (max-width: 600px) {
+  .page { padding: 16px 12px 32px; gap: 20px; }
+  .tiles { grid-template-columns: 1fr; gap: 16px; }
+  .tile { padding: 16px 14px 20px; border-radius: 22px; border-width: 3px; }
+  .tile-art { max-width: 190px; }
+  .card { border-radius: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lern-Insel – spielend lernen</title>
+<meta name="description" content="Kleine Lernspiele für Kinder: Uhrzeit lesen und mehr.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+</head>
+<body>
+
+<main class="page">
+
+  <header class="hero">
+    <h1>🎈 Lern-Insel</h1>
+    <p>Such dir aus, was du heute üben möchtest!</p>
+  </header>
+
+  <ul class="tiles">
+
+    <li>
+      <a class="card tile" href="uhrzeit.html">
+        <span class="tile-art">
+          <svg class="clock-preview" viewBox="0 0 400 400" role="img" aria-label="Analoge Uhr">
+            <circle cx="200" cy="200" r="192" fill="#fff" stroke="#4361ee" stroke-width="14"/>
+            <circle cx="200" cy="200" r="176" fill="#f7fbff"/>
+
+            <g id="ticks"></g>
+            <g id="minnums"></g>
+            <g id="numbers"></g>
+
+            <!-- Minutenzeiger (lang, dünn) -->
+            <g class="hand" id="minuteHand">
+              <line x1="200" y1="215" x2="200" y2="58" stroke="#2a9d8f" stroke-width="10" stroke-linecap="round"/>
+              <polygon points="200,44 190,66 210,66" fill="#2a9d8f"/>
+            </g>
+
+            <!-- Stundenzeiger (kurz, dick) -->
+            <g class="hand" id="hourHand">
+              <line x1="200" y1="215" x2="200" y2="108" stroke="#e4572e" stroke-width="16" stroke-linecap="round"/>
+              <polygon points="200,92 187,116 213,116" fill="#e4572e"/>
+            </g>
+
+            <circle cx="200" cy="200" r="14" fill="#33404d"/>
+            <circle cx="200" cy="200" r="6" fill="#fff"/>
+          </svg>
+        </span>
+        <h2>Uhrzeit lesen</h2>
+        <p>Zeiger drehen, Zeit ablesen und in fünf Stufen üben.</p>
+        <span class="go">Los geht’s →</span>
+      </a>
+    </li>
+
+    <li>
+      <div class="card tile soon">
+        <span class="emoji" role="img" aria-label="Zahlen">🔢</span>
+        <h2>Rechnen</h2>
+        <p>Plus und minus mit bunten Aufgaben.</p>
+        <span class="badge">bald</span>
+      </div>
+    </li>
+
+    <li>
+      <div class="card tile soon">
+        <span class="emoji" role="img" aria-label="Buch">📚</span>
+        <h2>Lesen</h2>
+        <p>Buchstaben, Silben und erste Wörter.</p>
+        <span class="badge">bald</span>
+      </div>
+    </li>
+
+  </ul>
+
+  <p class="foot">Viel Spass beim Üben! 🌟</p>
+
+</main>
+
+<script>
+/* Die Uhr auf der Kachel wird genau gleich gebaut wie auf uhrzeit.html
+   und zeigt die aktuelle Uhrzeit. */
+const SVGNS = "http://www.w3.org/2000/svg";
+const ticks = document.getElementById("ticks");
+const numbers = document.getElementById("numbers");
+const minnums = document.getElementById("minnums");
+
+function polar(radius, deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [200 + radius * Math.cos(rad), 200 + radius * Math.sin(rad)];
+}
+
+for (let i = 0; i < 60; i++) {
+  const isHour = i % 5 === 0;
+  const [x1, y1] = polar(isHour ? 152 : 160, i * 6);
+  const [x2, y2] = polar(168, i * 6);
+  const line = document.createElementNS(SVGNS, "line");
+  line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+  line.setAttribute("stroke", isHour ? "#33404d" : "#c3cedb");
+  line.setAttribute("stroke-width", isHour ? 7 : 3);
+  line.setAttribute("stroke-linecap", "round");
+  ticks.appendChild(line);
+}
+
+for (let h = 1; h <= 12; h++) {
+  const [x, y] = polar(120, h * 30);
+  const t = document.createElementNS(SVGNS, "text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("class", "num");
+  t.textContent = h;
+  numbers.appendChild(t);
+
+  const m = h * 5;
+  const [mx, my] = polar(182, m * 6);
+  const mt = document.createElementNS(SVGNS, "text");
+  mt.setAttribute("x", mx); mt.setAttribute("y", my);
+  mt.setAttribute("class", "minnum");
+  mt.textContent = m === 60 ? "00" : String(m).padStart(2, "0");
+  minnums.appendChild(mt);
+}
+
+const minuteHand = document.getElementById("minuteHand");
+const hourHand = document.getElementById("hourHand");
+
+function showNow() {
+  const now = new Date();
+  const minute = now.getMinutes();
+  const hour = now.getHours() % 12;
+  minuteHand.style.transform = `rotate(${minute * 6}deg)`;
+  hourHand.style.transform = `rotate(${hour * 30 + minute * 0.5}deg)`;
+}
+
+showNow();
+setInterval(showNow, 10000);
+</script>
+</body>
+</html>
