@@ -423,8 +423,8 @@
 
 <div class="toggles">
   <label class="toggle">
-    <input type="checkbox" id="showMinNums" checked>
-    Minutenzahlen zeigen
+    <input type="checkbox" id="showNums" checked>
+    Zahlen anzeigen
   </label>
   <label class="toggle">
     <input type="checkbox" id="speakOn" checked>
@@ -846,8 +846,10 @@ document.getElementById("solve").onclick = e => {
   speak(spokenTime(hour, minute));
 };
 spoken.onclick = () => speak(spokenTime(hour, minute));
-document.getElementById("showMinNums").onchange = e => {
-  minnums.style.display = e.target.checked ? "" : "none";
+document.getElementById("showNums").onchange = e => {
+  const vis = e.target.checked ? "" : "none";
+  minnums.style.display = vis;
+  numbers.style.display = vis;
 };
 
 newTime();
