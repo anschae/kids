@@ -288,6 +288,17 @@
 
   .key:active { transform: translateY(2px); }
 
+  /* Zahlen, die in diesem Level gar nicht vorkommen können */
+  .key:disabled {
+    border-style: dashed;
+    background: #f4f6fa;
+    color: var(--line);
+    cursor: default;
+    opacity: .55;
+  }
+
+  .key:disabled:active { transform: none; }
+
   .pad-row {
     display: flex;
     justify-content: center;
@@ -474,13 +485,18 @@
    Simultanerfassung (Subitizing) + Zahlen im Kopf behalten
    ========================================================= */
 
+/* Die Leiter steigt in kleinen Schritten: erst mehr Zahlen, dann unruhigere
+   Bilder, dann grössere Mengen, dann Tempo – nie mehrere Dinge auf einmal.
+   layout: "dice" = festes Würfelbild · "pattern" = geordnetes Muster
+           (Reihen, Rechtecke, zwei Gruppen) · "random" = freie Punktwolke */
 const LEVELS = [
-  { label: "2 Zahlen · Würfelbild", count: 2, min: 1, max: 4, ms: 900, layout: "dice",   goal: 8  },
-  { label: "3 Zahlen · Würfelbild", count: 3, min: 1, max: 5, ms: 800, layout: "dice",   goal: 8  },
-  { label: "3 Zahlen · gemischt",   count: 3, min: 1, max: 6, ms: 650, layout: "random", goal: 10 },
-  { label: "4 Zahlen · flott",      count: 4, min: 2, max: 7, ms: 500, layout: "random", goal: 10 },
-  { label: "4 Zahlen · schnell",    count: 4, min: 2, max: 9, ms: 400, layout: "random", goal: 10 },
-  { label: "5 Zahlen · blitz",      count: 5, min: 3, max: 9, ms: 300, layout: "random", goal: 12 }
+  { label: "2 Zahlen · Würfelbild", count: 2, min: 1, max: 6, ms: 900, layout: "dice",    goal: 8  },
+  { label: "3 Zahlen · Würfelbild", count: 3, min: 1, max: 6, ms: 800, layout: "dice",    goal: 8  },
+  { label: "3 Zahlen · Muster",     count: 3, min: 1, max: 6, ms: 700, layout: "pattern", goal: 10 },
+  { label: "3 Zahlen · bis 9",      count: 3, min: 1, max: 9, ms: 600, layout: "pattern", goal: 10 },
+  { label: "4 Zahlen · Muster",     count: 4, min: 1, max: 9, ms: 500, layout: "pattern", goal: 10 },
+  { label: "4 Zahlen · gemischt",   count: 4, min: 2, max: 9, ms: 450, layout: "random",  goal: 10 },
+  { label: "5 Zahlen · blitz",      count: 5, min: 2, max: 9, ms: 350, layout: "random",  goal: 12 }
 ];
 
 const MASK_MS  = 400;   // leeres Feld zwischen zwei Mengen (verhindert Nachbild-Zählen)
@@ -498,6 +514,7 @@ let pendingRetry = false; // verworfene Runde → Punkte bleiben stehen
 
 /* ---------- Speicher ---------- */
 const STORE = "blitzMengen";
+const STORE_V = 2;        // hochzählen, wenn sich die Level-Reihenfolge ändert
 
 function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE)) || {}; }
@@ -509,6 +526,9 @@ function saveStore(data) {
 }
 
 let store = loadStore();
+// Bestwerte hängen am Level-Index. Wurde die Leiter umgebaut, wären die alten
+// Werte dem falschen Level zugeordnet – dann lieber neu anfangen.
+if (store.v !== STORE_V) store = { v: STORE_V };
 if (!store.best) store.best = {};
 if (!store.done) store.done = {};
 
@@ -556,16 +576,12 @@ function paintLevels() {
 }
 
 /* ---------- Schwierigkeit innerhalb eines Levels ----------
-   Mit jedem Punkt wird es minimal schwieriger: die Anzeigedauer sinkt,
-   und ab fünf Punkten in Folge kommt eine grössere Zahl dazu. */
+   Mit jedem Punkt wird es minimal schwieriger: die Anzeigedauer sinkt.
+   Der Zahlenbereich bleibt bewusst fest – so passt er zum Ziffernblock
+   und keine Zahl ist seltener als eine andere. */
 function showMs() {
   const lv = LEVELS[level];
   return Math.max(Math.round(lv.ms * 0.7), lv.ms - 20 * score);
-}
-
-function maxValue() {
-  const lv = LEVELS[level];
-  return Math.min(9, lv.max + (score >= 5 ? 1 : 0));
 }
 
 /* ---------- Punktestand anzeigen ---------- */
@@ -599,6 +615,120 @@ const DICE = {
 
 function dicePoints(n) {
   return DICE[n].map(([x, y]) => ({ x: CX + x * 72, y: CY + y * 62 }));
+}
+
+/* ---------- Geordnete Muster ----------
+   Zwischenstufe zwischen Würfelbild und freier Wolke: die Punkte liegen
+   immer in einer Struktur (Reihe, Rechteck, zwei Gruppen), aber welche
+   davon, wird jedes Mal neu ausgewürfelt. So bleibt die Menge auf einen
+   Blick erfassbar, ohne dass immer dasselbe Bild kommt. */
+const STEP_X = 56, STEP_Y = 52;   // Rasterabstand im Muster
+const FACE_X = 46, FACE_Y = 46;   // kleines Würfelbild innerhalb einer Gruppe
+const GROUP_GAP = 74;             // Luft zwischen zwei Gruppen – deutlich mehr
+                                  // als der Rasterabstand, sonst verschmelzen sie
+
+/* Zeilenweise anordnen; angebrochene Zeilen werden zentriert. */
+function rowsToPoints(counts) {
+  const pts = [];
+  const h = (counts.length - 1) * STEP_Y;
+  counts.forEach((c, r) => {
+    const w = (c - 1) * STEP_X;
+    for (let i = 0; i < c; i++) pts.push({ x: i * STEP_X - w / 2, y: r * STEP_Y - h / 2 });
+  });
+  return pts;
+}
+
+/* n auf Zeilen der Breite w aufteilen, Rest wahlweise oben oder unten. */
+function chunks(n, w, restFirst) {
+  const counts = [];
+  for (let left = n; left > 0; left -= w) counts.push(Math.min(w, left));
+  if (restFirst) counts.reverse();
+  return counts;
+}
+
+/* Bausteine für die Gruppen: bewusst kompakt (Stange oder Block) statt
+   Würfelbild – zwei schräge Würfelbilder nebeneinander sehen aus wie
+   hingeworfen, zwei Blöcke bleiben auf einen Blick lesbar. */
+const BLOCK = {
+  1: [[0, 0]],
+  2: [[0, -0.5], [0, 0.5]],
+  3: [[0, -1], [0, 0], [0, 1]],
+  4: [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]],
+  5: [[-0.5, -1], [0.5, -1], [-0.5, 0], [0.5, 0], [0, 1]],
+  6: [[-0.5, -1], [0.5, -1], [-0.5, 0], [0.5, 0], [-0.5, 1], [0.5, 1]]
+};
+
+/* Zwei Blöcke nebeneinander, z. B. 9 als 6 + 3. */
+function groupPoints(parts) {
+  const groups = parts.map(n => BLOCK[n].map(([x, y]) => ({ x: x * FACE_X, y: y * FACE_Y })));
+  const spans  = groups.map(g => {
+    const xs = g.map(p => p.x);
+    return { min: Math.min(...xs), w: Math.max(...xs) - Math.min(...xs) };
+  });
+  const total = spans.reduce((s, o) => s + o.w, 0) + GROUP_GAP * (groups.length - 1);
+  const pts = [];
+  let x = -total / 2;
+  groups.forEach((g, i) => {
+    g.forEach(p => pts.push({ x: x + (p.x - spans[i].min), y: p.y }));
+    x += spans[i].w + GROUP_GAP;
+  });
+  return pts;
+}
+
+function patternVariants(n) {
+  const out = [];
+
+  // klassisches Würfelbild
+  if (DICE[n]) out.push(DICE[n].map(([x, y]) => ({ x: x * STEP_X, y: y * STEP_Y })));
+
+  // volle Rechtecke, z. B. 6 als 2×3 und 3×2, 9 als 3×3
+  for (let r = 1; r <= 4; r++) {
+    if (n % r) continue;
+    const c = n / r;
+    if (c > 5 || (r === 1 && c > 5)) continue;
+    out.push(rowsToPoints(Array(r).fill(c)));
+  }
+
+  // Zeilen mit angebrochener letzter Zeile, z. B. 7 als 4+3 oder 3+3+1
+  for (const w of [2, 3, 4, 5]) {
+    if (n <= w || n % w === 0) continue;
+    if (Math.ceil(n / w) > 4) continue;
+    out.push(rowsToPoints(chunks(n, w, false)));
+    out.push(rowsToPoints(chunks(n, w, true)));
+  }
+
+  // zwei Gruppen, z. B. 9 als 6 + 3 – hilft beim Zerlegen grosser Mengen.
+  // Beide Teile mindestens 2, sonst hängt ein einzelner Punkt daneben herum.
+  if (n >= 5) {
+    for (let a = Math.ceil(n / 2); a <= Math.min(6, n - 2); a++) {
+      const b = n - a;
+      if (b < 2 || b > 6) continue;
+      out.push(groupPoints([a, b]));
+      out.push(groupPoints([b, a]));
+    }
+  }
+
+  return out.length ? out : [rowsToPoints(chunks(n, 3, false))];
+}
+
+/* Muster mittig ins Feld setzen, notfalls verkleinern, und im verbleibenden
+   Spielraum leicht verschieben – damit es nicht immer exakt gleich klebt. */
+function fitPoints(pts) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const mx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const my = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const c  = pts.map(p => ({ x: p.x - mx, y: p.y - my }));
+  const hx = Math.max(...c.map(p => Math.abs(p.x)));
+  const hy = Math.max(...c.map(p => Math.abs(p.y)));
+  const s  = Math.min(1, (RX - DOT) / (hx || 1), (RY - DOT) / (hy || 1));
+  const ox = (Math.random() * 2 - 1) * Math.min(14, Math.max(0, (RX - DOT) - hx * s));
+  const oy = (Math.random() * 2 - 1) * Math.min(10, Math.max(0, (RY - DOT) - hy * s));
+  return c.map(p => ({ x: CX + p.x * s + ox, y: CY + p.y * s + oy }));
+}
+
+function patternPoints(n) {
+  const vars = patternVariants(n);
+  return fitPoints(vars[Math.floor(Math.random() * vars.length)]);
 }
 
 /* Zufällige Punkte: kein Überlappen, keine Reihen, und die Wolke füllt
@@ -639,7 +769,10 @@ function ringPoints(n) {
 }
 
 function drawDots(n) {
-  const pts = (LEVELS[level].layout === "dice" && DICE[n]) ? dicePoints(n) : randomPoints(n);
+  const layout = LEVELS[level].layout;
+  const pts = (layout === "dice" && DICE[n]) ? dicePoints(n)
+            : layout === "pattern"           ? patternPoints(n)
+            :                                  randomPoints(n);
   const frag = document.createDocumentFragment();
   for (const p of pts) {
     const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -712,13 +845,35 @@ function markStep(i) {
    Runde
    ========================================================= */
 
+/* Zahlen kommen aus einem Beutel: jede Zahl des Levels liegt zweimal darin,
+   gezogen wird ohne Zurücklegen. Über eine Serie hinweg kommt so jede Zahl
+   gleich oft vor – reines Würfeln hätte gefühlt immer dieselben Lieblinge. */
+let bag = [];
+
+function fillBag() {
+  const lv = LEVELS[level];
+  bag = [];
+  for (let copy = 0; copy < 2; copy++) {
+    for (let v = lv.min; v <= lv.max; v++) bag.push(v);
+  }
+  for (let i = bag.length - 1; i > 0; i--) {        // Fisher-Yates
+    const j = Math.floor(Math.random() * (i + 1));
+    [bag[i], bag[j]] = [bag[j], bag[i]];
+  }
+}
+
+function drawValue() {
+  if (!bag.length) fillBag();
+  return bag.pop();
+}
+
 function newValues() {
-  const lo = LEVELS[level].min, hi = maxValue();
+  const n = LEVELS[level].count;
   let v;
-  do {
-    v = Array.from({ length: LEVELS[level].count },
-                   () => lo + Math.floor(Math.random() * (hi - lo + 1)));
-  } while (hi > lo && v.every(x => x === v[0]));   // nie lauter gleiche Zahlen
+  for (let tries = 0; tries < 12; tries++) {
+    v = Array.from({ length: n }, drawValue);
+    if (!v.every(x => x === v[0])) break;           // nie lauter gleiche Zahlen
+  }
   return v;
 }
 
@@ -803,8 +958,18 @@ function paintBoxes(marks) {
   });
 }
 
+function possible(d) {
+  const lv = LEVELS[level];
+  return d >= lv.min && d <= lv.max;
+}
+
+/* Nur Zahlen anbieten, die in diesem Level überhaupt vorkommen können. */
+function paintPad() {
+  for (let d = 1; d <= 9; d++) keys[d].disabled = !possible(d);
+}
+
 function typeDigit(d) {
-  if (phase !== "input") return;
+  if (phase !== "input" || !possible(d)) return;
   entry[active] = d;
   const next = entry.findIndex((v, i) => v === null && i > active);
   active = next === -1 ? Math.min(active + 1, entry.length - 1) : next;
@@ -888,6 +1053,8 @@ function resetSeries() {
   firstRound = true;
   pendingRetry = false;
   entry = [];
+  fillBag();
+  paintPad();
   clearDots();
   stepsBox.replaceChildren();
   inputCard.classList.add("hidden");
@@ -948,11 +1115,13 @@ function confetti() {
 /* =========================================================
    Bedienung
    ========================================================= */
+const keys = [];
 for (let d = 1; d <= 9; d++) {
   const k = document.createElement("button");
   k.className = "key";
   k.textContent = d;
   k.onclick = () => typeDigit(d);
+  keys[d] = k;
   pad.appendChild(k);
 }
 
