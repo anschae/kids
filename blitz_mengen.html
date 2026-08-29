@@ -508,7 +508,6 @@ let values = [];          // die Zahlen der aktuellen Runde
 let entry = [];           // die Eingabe des Kindes
 let active = 0;           // welches Kästchen gerade dran ist
 let phase = "idle";       // idle | show | input | over
-let firstRound = true;    // erste Runde einer Serie → langer Countdown
 let goalShown = false;    // Level-geschafft-Meldung schon gezeigt?
 let pendingRetry = false; // verworfene Runde → Punkte bleiben stehen
 
@@ -892,12 +891,8 @@ function startRound() {
   const steps = [];
   const ms = showMs();
 
-  if (firstRound) {
-    ["3", "2", "1"].forEach(t => steps.push({ ms: 600, enter: () => showOverlay(t, "", false, true) }));
-  } else {
-    steps.push({ ms: 700, enter: () => showOverlay("Achtung …", "", false, false) });
-  }
-  firstRound = false;
+  // Vor jeder Runde derselbe Countdown: so weiss man immer, wann es losgeht.
+  ["3", "2", "1"].forEach(t => steps.push({ ms: 600, enter: () => showOverlay(t, "", false, true) }));
 
   values.forEach((v, i) => {
     steps.push({
@@ -925,7 +920,6 @@ function retryRound() {
   showOverlay("Nochmals?", "Diese Runde war nicht fair – deine Punkte bleiben.", true, false);
   startBtn.textContent = "▶️ Weiter";
   phase = "idle";
-  firstRound = true;
   pendingRetry = true;
 }
 
@@ -1050,7 +1044,6 @@ function resetSeries() {
   phase = "idle";
   score = 0;
   goalShown = false;
-  firstRound = true;
   pendingRetry = false;
   entry = [];
   fillBag();
