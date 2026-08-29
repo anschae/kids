@@ -34,6 +34,69 @@
     color: var(--ring);
   }
 
+  /* ---------- Modus-Auswahl ---------- */
+  .modes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .modes button {
+    font: inherit;
+    font-size: clamp(15px, 2.6vw, 19px);
+    padding: 10px 22px;
+    border: 4px solid var(--accent);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--accent-dark);
+    cursor: pointer;
+    transition: transform .12s ease, background .12s ease, color .12s ease;
+  }
+
+  @media (hover: hover) {
+    .modes button:hover { transform: translateY(-2px); }
+  }
+
+  .modes button[aria-pressed="true"] {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ---------- Aufgabe im Einstell-Modus ---------- */
+  .task-card {
+    width: 100%;
+    max-width: 444px;
+    text-align: center;
+  }
+
+  .task-label {
+    margin: 0 0 6px;
+    font-size: clamp(16px, 3.2vw, 20px);
+    color: var(--soft);
+  }
+
+  .task-time {
+    font-size: clamp(36px, 9vw, 58px);
+    font-weight: bold;
+    color: var(--ring);
+    letter-spacing: 2px;
+    line-height: 1.1;
+  }
+
+  .task-words {
+    font-size: clamp(18px, 4vw, 26px);
+    cursor: pointer;
+  }
+
+  /* Was zu welchem Modus gehört (.hidden blendet nur unsichtbar,
+     hier soll der Platz wirklich weg sein) */
+  body:not(.mode-set) .task-card,
+  body:not(.mode-set) #checkClock,
+  body:not(.mode-set) .hint-set,
+  body.mode-set .check,
+  body.mode-set .hint-read { display: none; }
+
   /* ---------- Level-Auswahl ---------- */
   .levels {
     display: flex;
@@ -322,9 +385,10 @@
       display: grid;
       grid-template-columns: auto minmax(240px, 420px);
       grid-template-areas:
-        "nav    nav"
+        "nav    modes"
         "title  title"
         "levels levels"
+        "clock  task"
         "clock  controls"
         "clock  check"
         "clock  answer"
@@ -340,13 +404,21 @@
     .top-nav { grid-area: nav; }
     h1 { grid-area: title; font-size: 22px; }
 
+    .modes { grid-area: modes; gap: 6px; }
+    .modes button { padding: 5px 14px; border-width: 3px; font-size: 13px; }
+
+    .task-card { grid-area: task; padding: 8px 12px; }
+    .task-label { font-size: 13px; margin-bottom: 2px; }
+    .task-time { font-size: 30px; }
+    .task-words { font-size: 16px; }
+
     .levels { grid-area: levels; gap: 6px; }
     .levels button { padding: 5px 9px; border-width: 3px; border-radius: 14px; font-size: 12px; }
     .levels b, .levels small { display: inline; font-size: 1em; }   /* einzeilig, spart Höhe */
     .levels small::before { content: " · "; }
 
     .clock-wrap { grid-area: clock; align-self: center; padding: 6px; width: auto; }
-    svg.clock { width: min(56vh, 300px); max-width: none; }
+    svg.clock { width: min(52vh, 300px); max-width: none; }
 
     .controls { grid-area: controls; gap: 10px; }
     .big-btn { font-size: 17px; padding: 11px 16px; box-shadow: 0 4px 0 #cf8544; }
@@ -377,9 +449,20 @@
   <a href="index.html" class="home-link">🏠 Zur Startseite</a>
 </nav>
 
-<h1>🕒 Wie spät ist es?</h1>
+<h1 id="title">🕒 Wie spät ist es?</h1>
+
+<div class="modes" id="modes">
+  <button data-mode="read" aria-pressed="true">🕵️ Zeit ablesen</button>
+  <button data-mode="set" aria-pressed="false">🎯 Zeit einstellen</button>
+</div>
 
 <div class="levels" id="levels"></div>
+
+<div class="card task-card" id="taskCard">
+  <p class="task-label">Stell diese Zeit ein:</p>
+  <div class="task-time" id="taskTime">--:--</div>
+  <div class="task-words" id="taskWords" title="Nochmals vorlesen"></div>
+</div>
 
 <div class="card clock-wrap">
   <svg class="clock" viewBox="0 0 400 400" role="img" aria-label="Analoge Uhr">
@@ -409,6 +492,7 @@
 
 <div class="controls">
   <button class="big-btn" id="newTime">🎲 Neue Zeit</button>
+  <button class="big-btn solve" id="checkClock">✅ Prüfen</button>
   <button class="big-btn solve" id="solve">👀 Lösung</button>
 </div>
 
@@ -428,7 +512,7 @@
   </label>
   <label class="toggle">
     <input type="checkbox" id="speakOn" checked>
-    🔊 Lösung vorlesen
+    <span id="speakLabel">🔊 Lösung vorlesen</span>
   </label>
 </div>
 
@@ -438,13 +522,24 @@
 </div>
 
 <p class="hint">
-  <span class="hint-touch">Zeiger mit dem Finger <strong>drehen</strong> · doppelt tippen rastet auf die nächste Zeit des Levels ein</span>
-  <span class="hint-keys">Zeiger mit der Maus <strong>drehen</strong> ·
-  <kbd>Leertaste</kbd> rastet auf die nächste Zeit des Levels ein ·
-  <kbd>←</kbd> <kbd>→</kbd> stellen die Uhr zur nächsten Zeit des Levels ·
-  <kbd>N</kbd> würfelt eine neue Zeit ·
-  <kbd>L</kbd> zeigt die Lösung ·
-  <kbd>Enter</kbd> im Eingabefeld prüft deine Antwort</span>
+  <span class="hint-read">
+    <span class="hint-touch">Zeiger mit dem Finger <strong>drehen</strong> · doppelt tippen rastet auf die nächste Zeit des Levels ein</span>
+    <span class="hint-keys">Zeiger mit der Maus <strong>drehen</strong> ·
+    <kbd>Leertaste</kbd> rastet auf die nächste Zeit des Levels ein ·
+    <kbd>←</kbd> <kbd>→</kbd> stellen die Uhr zur nächsten Zeit des Levels ·
+    <kbd>N</kbd> würfelt eine neue Zeit ·
+    <kbd>L</kbd> zeigt die Lösung ·
+    <kbd>Enter</kbd> im Eingabefeld prüft deine Antwort</span>
+  </span>
+  <span class="hint-set">
+    Dreh die Zeiger, bis die Uhr die gesuchte Zeit zeigt, und drück dann auf <strong>Prüfen</strong>.
+    <span class="hint-touch"><br>Doppelt tippen rastet auf die nächste Zeit des Levels ein.</span>
+    <span class="hint-keys"><br><kbd>Leertaste</kbd> rastet ein ·
+    <kbd>←</kbd> <kbd>→</kbd> gehen zur nächsten Zeit des Levels ·
+    <kbd>Enter</kbd> prüft ·
+    <kbd>N</kbd> gibt eine neue Aufgabe ·
+    <kbd>L</kbd> zeigt die Lösung</span>
+  </span>
 </p>
 
 <script>
@@ -463,6 +558,13 @@ let level = 0;      // 0..4  entspricht Level 1..5
 let grid = [];      // alle im Level erlaubten Zeiten als Minuten seit 12 Uhr
 let hour = 12;      // 1..12
 let minute = 0;     // 0..59
+
+/* Zwei Spielarten mit denselben Levels:
+   "read" – die Uhr zeigt eine Zeit, das Kind liest sie ab.
+   "set"  – eine Zeit ist vorgegeben, das Kind stellt die Zeiger. */
+let mode = "read";
+let target = 0;     // gesuchte Zeit im Einstell-Modus (Minuten seit 12 Uhr)
+let nextTimer = 0;  // wartet nach einer richtigen Antwort auf die neue Aufgabe
 let hourRot = 0;    // aufsummierte Rotation, damit die Zeiger immer vorwärts laufen
 let minRot = 0;
 
@@ -525,10 +627,35 @@ LEVELS.forEach((lv, i) => {
     buildGrid();
     [...levelsBox.children].forEach(c => c.setAttribute("aria-pressed", c === b));
     b.blur();                                // damit die Leertaste die Uhr steuert
+    // Die alte Aufgabe passt nicht mehr zum neuen Level – also eine neue.
+    if (mode === "set") newTime();
   };
   levelsBox.appendChild(b);
 });
 buildGrid();
+
+/* ---------- Modus-Knöpfe ---------- */
+const modesBox = document.getElementById("modes");
+const title = document.getElementById("title");
+const taskTime = document.getElementById("taskTime");
+const taskWords = document.getElementById("taskWords");
+
+[...modesBox.children].forEach(b => {
+  b.onclick = () => { setMode(b.dataset.mode); b.blur(); };
+});
+
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  [...modesBox.children].forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === m));
+  document.body.classList.toggle("mode-set", m === "set");
+
+  title.textContent = m === "set" ? "🕒 Stell die Uhr!" : "🕒 Wie spät ist es?";
+  document.getElementById("newTime").textContent = m === "set" ? "🎲 Neue Aufgabe" : "🎲 Neue Zeit";
+  document.getElementById("speakLabel").textContent =
+    m === "set" ? "🔊 Aufgabe vorlesen" : "🔊 Lösung vorlesen";
+  newTime();
+}
 
 /* ---------- Zeit setzen ---------- */
 const svg = document.querySelector("svg.clock");
@@ -538,14 +665,14 @@ const hourHand = document.getElementById("hourHand");
 function minuteAngle()  { return minute * 6; }                        // 6° pro Minute
 function hourAngle()    { return (hour % 12) * 30 + minute * 0.5; }   // Stundenzeiger wandert mit
 
-// mode: "spin" = neue Zeit, "step" = Tastenschritt, "drag" = ohne Animation
-// dir:  +1 = beide Zeiger vorwärts, -1 = beide rückwärts, 0 = kürzester Weg
-function drawHands(mode = "spin", dir = 0) {
+// how: "spin" = neue Zeit, "step" = Tastenschritt, "drag" = ohne Animation
+// dir: +1 = beide Zeiger vorwärts, -1 = beide rückwärts, 0 = kürzester Weg
+function drawHands(how = "spin", dir = 0) {
   minRot += turn(minuteAngle() - (minRot % 360), dir);
   hourRot += turn(hourAngle() - (hourRot % 360), dir);
 
-  svg.classList.toggle("stepping", mode === "step");
-  svg.classList.toggle("dragging", mode === "drag");
+  svg.classList.toggle("stepping", how === "step");
+  svg.classList.toggle("dragging", how === "drag");
   minuteHand.style.transform = `rotate(${minRot}deg)`;
   hourHand.style.transform = `rotate(${hourRot}deg)`;
 }
@@ -567,12 +694,16 @@ function shortest(deltaDeg) {          // Winkeldifferenz auf -180..180 bringen
 /* Zeit als Minuten seit 12 Uhr (0..719) */
 function totalMinutes() { return (hour % 12) * 60 + minute; }
 
-function setTotal(total, mode, dir = 0) {
+function hourOf(total)   { const h = Math.floor(total / 60); return h === 0 ? 12 : h; }
+function minuteOf(total) { return total % 60; }
+
+// how: "spin" = neue Zeit, "step" = Tastenschritt, "drag" = ohne Animation
+function setTotal(total, how, dir = 0) {
+  clearTimeout(nextTimer);             // wer weiterdreht, will noch keine neue Aufgabe
   const t = ((Math.round(total) % 720) + 720) % 720;
-  const h = Math.floor(t / 60);
-  hour = h === 0 ? 12 : h;
-  minute = t % 60;
-  drawHands(mode, dir);
+  hour = hourOf(t);
+  minute = minuteOf(t);
+  drawHands(how, dir);
   updateAnswer();
   clearFeedback();                     // alte Rückmeldung passt nicht mehr
 }
@@ -599,16 +730,44 @@ function updateAnswer() {
   spoken.textContent = spokenTime(hour, minute);
 }
 
-function newTime() {
+function pickTime(avoid) {
   let t, tries = 0;
   do {                                      // nicht zweimal dieselbe Zeit
     t = grid[Math.floor(Math.random() * grid.length)];
-  } while (t === totalMinutes() && ++tries < 20);
+  } while (t === avoid && ++tries < 20);
+  return t;
+}
 
-  setTotal(t, "spin", 1);                   // Zeiger drehen immer vorwärts
+/* Startstellung im Einstell-Modus: weit weg von der gesuchten Zeit,
+   sonst stünde die Uhr schon fast richtig da. */
+function startAwayFrom(t) {
+  let s, tries = 0;
+  do {
+    s = grid[Math.floor(Math.random() * grid.length)];
+  } while (Math.abs(circDiff(s, t)) < 90 && ++tries < 40);
+  return s;
+}
+
+function paintTask() {
+  const h = hourOf(target), m = minuteOf(target);
+  taskTime.textContent = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+  taskWords.textContent = spokenTime(h, m);
+}
+
+function newTime() {
+  clearTimeout(nextTimer);
   digital.classList.add("hidden");
   spoken.classList.add("hidden");
   guess.value = "";
+
+  if (mode === "set") {
+    target = pickTime(target);
+    paintTask();
+    setTotal(startAwayFrom(target), "spin", 1);
+    speak(spokenTime(hourOf(target), minuteOf(target)));
+  } else {
+    setTotal(pickTime(totalMinutes()), "spin", 1);   // Zeiger drehen immer vorwärts
+  }
   clearFeedback();
 }
 
@@ -729,10 +888,10 @@ function timeText(h, m) {
          " – " + spokenTime(h, m);
 }
 
-function say(cls, message, showSolution) {
+/* extra kommt als zweite, ruhigere Zeile unter die Rückmeldung. */
+function say(cls, message, extra) {
   feedback.className = "feedback " + cls;
-  feedback.innerHTML = message +
-    (showSolution ? '<span class="solution">Richtig ist: ' + timeText(hour, minute) + "</span>" : "");
+  feedback.innerHTML = message + (extra ? '<span class="solution">' + extra + "</span>" : "");
 }
 
 function clearFeedback() {
@@ -742,13 +901,13 @@ function clearFeedback() {
 
 function checkGuess() {
   if (!guess.value.trim()) {
-    say("info", "Gib zuerst eine Zeit ein, z. B. <strong>7:45</strong>.", false);
+    say("info", "Gib zuerst eine Zeit ein, z. B. <strong>7:45</strong>.");
     guess.focus();
     return;
   }
   const input = parseTime(guess.value);
   if (!input) {
-    say("info", "Das kann ich nicht lesen. Schreibe die Zeit z. B. als <strong>7:45</strong>, 07.45 oder 7-45.", false);
+    say("info", "Das kann ich nicht lesen. Schreibe die Zeit z. B. als <strong>7:45</strong>, 07.45 oder 7-45.");
     return;
   }
 
@@ -756,7 +915,7 @@ function checkGuess() {
   const inTotal = (input.h % 12) * 60 + input.m;
 
   if (inTotal === curTotal) {
-    say("good", "🎉 Richtig! Es ist " + timeText(hour, minute) + ".", false);
+    say("good", "🎉 Richtig! Es ist " + timeText(hour, minute) + ".");
     speak(spokenTime(hour, minute));
     return;
   }
@@ -780,11 +939,48 @@ function checkGuess() {
     msg = "Das stimmt leider noch nicht.";
   }
 
-  say("bad", msg, true);
+  say("bad", msg, "Richtig ist: " + timeText(hour, minute));
   speak(spokenTime(hour, minute));
 }
 
 document.getElementById("checkBtn").onclick = checkGuess;
+
+/* ---------- Gestellte Uhr prüfen (Einstell-Modus) ---------- */
+function checkClock() {
+  const tH = hourOf(target), tM = minuteOf(target);
+
+  if (totalMinutes() === target) {
+    say("good", "🎉 Genau! Das ist " + timeText(tH, tM) + ".");
+    speak(spokenTime(tH, tM));
+    digital.classList.remove("hidden");        // jetzt darf die Uhr sich zeigen
+    spoken.classList.remove("hidden");
+    nextTimer = setTimeout(() => { if (mode === "set") newTime(); }, 2400);
+    return;
+  }
+
+  const off = Math.abs(circDiff(totalMinutes(), target));   // Minuten daneben
+  // Wo stünden die Zeiger, wenn man sie vertauscht hätte?
+  const swapH = tM % 5 === 0 ? (tM === 0 ? 12 : tM / 5) : null;
+  let msg;
+
+  if (swapH !== null && hour === swapH && minute === (tH % 12) * 5) {
+    msg = "Fast! Du hast die Zeiger vertauscht: Der <strong>kurze</strong> Zeiger zeigt die Stunden, der <strong>lange</strong> die Minuten.";
+  } else if (minute === tM) {
+    msg = "Die Minuten stimmen! Dreh noch den <strong>kurzen</strong> Zeiger.";
+  } else if (hour === tH) {
+    msg = off <= 5
+      ? "Ganz knapp! Der lange Zeiger ist nur " + off + (off === 1 ? " Minute" : " Minuten") + " daneben."
+      : "Die Stunde stimmt! Jetzt noch der <strong>lange</strong> Zeiger.";
+  } else if (off <= 5) {
+    msg = "Ganz knapp daneben!";
+  } else {
+    msg = "Das stimmt noch nicht.";
+  }
+
+  say("bad", msg, "Deine Uhr zeigt: " + timeText(hour, minute));
+}
+
+document.getElementById("checkClock").onclick = e => { e.currentTarget.blur(); checkClock(); };
 
 guess.oninput = () => {
   const pos = guess.selectionStart;                    // Trennzeichen sofort zu ":" machen
@@ -832,8 +1028,11 @@ document.addEventListener("keydown", e => {
     case "ArrowLeft":
     case "ArrowDown":  e.preventDefault(); stepTime(-1); break;
     case "KeyN":       document.getElementById("newTime").click(); break;
-    case "KeyL":
-    case "Enter":      document.getElementById("solve").click(); break;
+    case "KeyL":       document.getElementById("solve").click(); break;
+    // Im Einstell-Modus prüft Enter die gestellte Uhr, sonst zeigt es die Lösung.
+    case "Enter":      if (mode === "set") checkClock();
+                       else document.getElementById("solve").click();
+                       break;
   }
 });
 
@@ -841,11 +1040,16 @@ document.addEventListener("keydown", e => {
 document.getElementById("newTime").onclick = e => { e.currentTarget.blur(); newTime(); };
 document.getElementById("solve").onclick = e => {
   e.currentTarget.blur();
+  if (mode === "set") {
+    setTotal(target, "spin");                  // Zeiger wandern zur Lösung
+    say("info", "So sieht " + timeText(hour, minute) + " aus.");
+  }
   digital.classList.remove("hidden");
   spoken.classList.remove("hidden");
   speak(spokenTime(hour, minute));
 };
 spoken.onclick = () => speak(spokenTime(hour, minute));
+taskWords.onclick = () => speak(spokenTime(hourOf(target), minuteOf(target)));
 document.getElementById("showNums").onchange = e => {
   const vis = e.target.checked ? "" : "none";
   minnums.style.display = vis;
