@@ -9,7 +9,10 @@
       "Bash(node --check /private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/uhrzeit.html.js)",
       "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --disable-gpu --virtual-time-budget=2500 --dump-dom \"file:///Users/anschae/Sync/repos/kids/franken.html\")",
       "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --window-size=500,1100 --screenshot=/private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/final.png --virtual-time-budget=2500 file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/fr_l4.html)",
-      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --virtual-time-budget=15000 --dump-dom file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/blitz_test.html)"
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --virtual-time-budget=15000 --dump-dom file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/blitz_test.html)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --virtual-time-budget=3000 --dump-dom file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/fr_speak.html)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --window-size=400,1250 --screenshot=/private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/fr_price.png --virtual-time-budget=2500 file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/frame3.html)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --virtual-time-budget=20000 --dump-dom file:///private/tmp/claude-501/-Users-anschae-Sync-repos-kids/10b34254-a4cb-4e49-9ab3-695bc8c2a7bd/scratchpad/fr_pause.html)"
     ]
   }
 }
