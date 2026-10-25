@@ -1,0 +1,2335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesen lernen</title>
+<meta name="description" content="Buchstaben, erste Wörter und kleine Sätze lesen – auch für Kinder, die noch nicht lesen können.">
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<style>
+  /* Lese-Schrift: Andika hat ein einstöckiges a, ein I mit Querstrichen
+     (nicht zu verwechseln mit l) und ist nahe an der Schweizer Basisschrift. */
+  :root { --read: "Andika", "Trebuchet MS", system-ui, sans-serif; }
+
+  .read { font-family: var(--read); }
+
+  body {
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .top-nav {
+    width: 100%;
+    max-width: 820px;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  button, label, .hint {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  button { touch-action: manipulation; }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 6vw, 44px);
+    text-align: center;
+    color: var(--ring);
+  }
+
+  /* Der Eltern-Knopf ist bewusst unauffällig – er soll Kinder nicht locken. */
+  .parent-btn {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 14px;
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .7);
+    color: var(--soft);
+    cursor: pointer;
+  }
+
+  @media (hover: hover) {
+    .parent-btn:hover { border-color: var(--ring); color: var(--ring); }
+  }
+
+  /* ---------- Level-Auswahl ----------
+     Grosse Bilder statt Text: wer noch nicht lesen kann, erkennt
+     das Level am Bild, die Sterne zeigen den besten Stand. */
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .levels button {
+    font: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 6px 8px;
+    border: 4px solid var(--ring);
+    border-radius: 22px;
+    background: #fff;
+    color: var(--ring);
+    cursor: pointer;
+    transition: transform .12s ease, background .12s ease, color .12s ease;
+  }
+
+  @media (hover: hover) {
+    .levels button:hover { transform: translateY(-2px); }
+  }
+
+  .levels button[aria-pressed="true"] {
+    background: var(--ring);
+    color: #fff;
+  }
+
+  .lv-icon {
+    font-size: clamp(34px, 8vw, 46px);
+    line-height: 1.1;
+  }
+
+  .lv-icon.read { font-weight: 700; }
+
+  .lv-name { font-size: clamp(13px, 2.6vw, 16px); }
+
+  .lv-stars { font-size: clamp(14px, 3vw, 18px); letter-spacing: 1px; }
+
+  /* nicht erreichte Sterne: grau statt gelb */
+  .off {
+    filter: grayscale(1);
+    opacity: .3;
+  }
+
+  /* ---------- Spielfeld ---------- */
+  .game {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* Lautsprecher: immer am gleichen Ort, immer gross */
+  .speaker {
+    flex: none;
+    width: 68px;
+    height: 68px;
+    font-size: 34px;
+    line-height: 1;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 5px 0 var(--accent-dark);
+    cursor: pointer;
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+
+  .speaker:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 var(--accent-dark);
+  }
+
+  .speaker.talking { animation: talk .9s ease-in-out infinite; }
+
+  @keyframes talk {
+    50% { transform: scale(1.08); }
+  }
+
+  .speaker[hidden] { display: block; visibility: hidden; }
+
+  /* Fortschritt: ein Feld pro Aufgabe */
+  .progress {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
+
+  .progress i {
+    height: 16px;
+    border-radius: 8px;
+    background: #e3eaf3;
+    transition: background .3s ease, transform .3s ease;
+  }
+
+  .progress i.now  { background: #c9d6ff; transform: scaleY(1.25); }
+  .progress i.good { background: var(--minute); }
+  .progress i.help { background: var(--accent); }
+
+  .screen {
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* ---------- Aufgabe ---------- */
+  .task {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    animation: slide-in .3s ease-out;
+  }
+
+  /* nur senkrecht – waagrecht gäbe auf dem Handy kurz einen Scrollbalken */
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(14px); }
+  }
+
+  .stim {
+    width: 100%;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .act {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .big-letter {
+    font-family: var(--read);
+    font-size: clamp(100px, 28vw, 170px);
+    line-height: 1;
+    color: var(--ring);
+  }
+
+  .big-emoji {
+    font-size: clamp(88px, 24vw, 140px);
+    line-height: 1.05;
+  }
+
+  /* Hör-Aufgabe: grosses Ohr, antippen wiederholt die Ansage */
+  .listen {
+    font: inherit;
+    font-size: clamp(80px, 22vw, 120px);
+    line-height: 1.1;
+    padding: 6px 24px;
+    border: none;
+    border-radius: 30px;
+    background: #fff4e8;
+    cursor: pointer;
+  }
+
+  .listen:active { transform: scale(.97); }
+
+  .big-word {
+    font-family: var(--read);
+    font-size: clamp(48px, 13vw, 84px);
+    line-height: 1.2;
+    padding-bottom: .2em;
+    color: var(--ink);
+    letter-spacing: .02em;
+  }
+
+  .sentence {
+    font-family: var(--read);
+    font-size: clamp(30px, 7vw, 48px);
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 640px;
+  }
+
+  /* Jedes Wort ist antippbar und wird dann vorgelesen. */
+  .w {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    padding: 0 .04em;
+    margin: 0;
+    border: none;
+    border-radius: .2em;
+    background: none;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+
+  .w.on { background: #fff0c2; }
+
+  /* ---------- Silbenbögen: blau und rot im Wechsel ---------- */
+  .syl {
+    position: relative;
+    display: inline-block;
+    color: var(--ring);
+  }
+
+  .syl.s1 { color: var(--hour); }
+
+  .syl::after {
+    content: "";
+    position: absolute;
+    left: .08em;
+    right: .08em;
+    bottom: -.12em;
+    height: .2em;
+    border: .06em solid currentColor;
+    border-top: none;
+    border-radius: 0 0 999px 999px;
+  }
+
+  /* ---------- Antwort-Knöpfe ---------- */
+  .opts {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .opt {
+    position: relative;
+    font: inherit;
+    min-height: 100px;
+    padding: 10px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid var(--line);
+    border-radius: 24px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 6px 0 #dbe3ee;
+    cursor: pointer;
+    transition: transform .1s ease, box-shadow .1s ease, border-color .15s ease,
+                background .15s ease, opacity .2s ease;
+  }
+
+  @media (hover: hover) {
+    .opt:hover:not([disabled]) { border-color: var(--ring); }
+  }
+
+  .opt:active:not([disabled]) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #dbe3ee;
+  }
+
+  .opt[disabled] { cursor: default; }
+
+  .opt.letter { font-family: var(--read); font-size: clamp(48px, 12vw, 70px); line-height: 1; }
+  .opt.word   { font-family: var(--read); font-size: clamp(30px, 7.4vw, 44px); padding-bottom: 18px; }
+  .opt.thumb  { font-size: clamp(42px, 11vw, 60px); }
+
+  .opt .em    { font-size: clamp(46px, 12vw, 66px); line-height: 1; }
+  .opt .pair  { display: flex; gap: 6px; }
+  .opt .pair .em { font-size: clamp(38px, 9.5vw, 54px); }
+  .opt .em.huge { font-size: clamp(58px, 15vw, 82px); }
+  .opt .em.tiny { font-size: clamp(22px, 5.5vw, 30px); }
+
+  /* Wort-Antworten untereinander, damit lange Wörter Platz haben */
+  .opts.words { --cols: 1; max-width: 420px; }
+
+  @media (min-width: 640px) {
+    .opts.words { --cols: 3; max-width: none; }
+  }
+
+  .opt.good {
+    border-color: var(--minute);
+    background: #e3f5f1;
+    animation: pop .45s ease;
+  }
+
+  .opt.bad {
+    border-color: var(--accent);
+    animation: wiggle .45s ease;
+  }
+
+  .opt.dim { opacity: .3; }
+
+  /* Lösung zeigen: sanftes Pulsieren statt rotem Kreuz */
+  .show-me {
+    border-color: var(--minute) !important;
+    animation: glow 1.1s ease-in-out infinite;
+  }
+
+  @keyframes pop {
+    40% { transform: scale(1.1); }
+  }
+
+  @keyframes wiggle {
+    20% { transform: translateX(-10px) rotate(-3deg); }
+    40% { transform: translateX(9px) rotate(3deg); }
+    60% { transform: translateX(-6px) rotate(-2deg); }
+    80% { transform: translateX(4px); }
+  }
+
+  @keyframes glow {
+    50% { box-shadow: 0 0 0 9px rgba(42, 157, 143, .28), 0 6px 0 #dbe3ee; transform: scale(1.04); }
+  }
+
+  /* Farbige Bilder für Sätze wie „Die Maus ist rot.“ –
+     die Emojis werden per Filter eingefärbt. */
+  .tint-red    { filter: brightness(.55) sepia(1) saturate(18) hue-rotate(-28deg) brightness(1.3); }
+  .tint-blue   { filter: sepia(1) saturate(6) hue-rotate(175deg) brightness(.9); }
+  .tint-green  { filter: sepia(1) saturate(5) hue-rotate(60deg) brightness(.85); }
+  .tint-yellow { filter: sepia(1) saturate(12) hue-rotate(10deg) brightness(1.2) contrast(1.05); }
+
+  /* Ja/Nein-Knöpfe */
+  .opt.yes { background: #eaf7f3; }
+  .opt.no  { background: #fdf0ea; }
+
+  /* Lösungsbild nach der Stimmt-das-Aufgabe */
+  .fact-pic {
+    font-size: clamp(40px, 10vw, 56px);
+    animation: pop .45s ease;
+  }
+
+  /* ---------- Legen: Buchstaben- und Wortkärtchen ---------- */
+  .slots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--read);
+  }
+
+  .slot {
+    min-width: 1.2em;
+    height: 1.45em;
+    padding: 0 .12em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 5px solid var(--line);
+    font-size: clamp(40px, 10vw, 60px);
+    color: var(--ink);
+  }
+
+  .slot.filled { border-color: var(--minute); animation: pop .35s ease; }
+
+  .slots.words .slot {
+    min-width: 2.4em;
+    font-size: clamp(26px, 6.4vw, 38px);
+  }
+
+  /* Satzzeichen hinter einer Lücke: steht fest, rückt nahe an die Lücke */
+  .slots .mark {
+    align-self: flex-end;
+    margin-left: -6px;
+    padding-bottom: 4px;
+    font-size: clamp(26px, 6.4vw, 38px);
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .chip {
+    font-family: var(--read);
+    font-size: clamp(36px, 9vw, 52px);
+    min-width: 76px;
+    min-height: 80px;
+    padding: 4px 14px;
+    border: 4px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 6px 0 #dbe3ee;
+    cursor: pointer;
+    transition: transform .1s ease, opacity .2s ease, box-shadow .1s ease;
+  }
+
+  .chips.words .chip {
+    font-size: clamp(26px, 6.4vw, 38px);
+    min-height: 68px;
+  }
+
+  .chip:active:not([disabled]) { transform: translateY(4px); box-shadow: 0 2px 0 #dbe3ee; }
+  .chip.bad  { border-color: var(--accent); animation: wiggle .45s ease; }
+  .chip.used { opacity: .15; cursor: default; }
+
+  .clue {
+    font-size: clamp(54px, 14vw, 80px);
+    line-height: 1.1;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .clue .pair { display: inline-flex; gap: 8px; }
+  .clue .em.huge { font-size: 1.2em; }
+  .clue .em.tiny { font-size: .45em; }
+
+  /* ---------- Start, Ende, zu wenige Wörter ---------- */
+  .start, .end, .blocked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    animation: slide-in .3s ease-out;
+  }
+
+  .start-icon {
+    font-size: clamp(80px, 22vw, 120px);
+    line-height: 1.1;
+  }
+
+  .start-icon.read { font-weight: 700; color: var(--ring); }
+
+  .play {
+    width: 128px;
+    height: 128px;
+    font-size: 60px;
+    line-height: 1;
+    padding-left: 10px;
+    border: none;
+    border-radius: 50%;
+    background: var(--minute);
+    color: #fff;
+    box-shadow: 0 8px 0 var(--minute-dark);
+    cursor: pointer;
+    animation: breathe 1.8s ease-in-out infinite;
+  }
+
+  .play:active { transform: translateY(5px); box-shadow: 0 3px 0 var(--minute-dark); animation: none; }
+
+  @keyframes breathe {
+    50% { transform: scale(1.06); }
+  }
+
+  .parent-note {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--soft);
+    max-width: 520px;
+  }
+
+  .parent-note b { color: var(--ink); }
+
+  .stars {
+    display: flex;
+    gap: 8px;
+    font-size: clamp(54px, 14vw, 76px);
+    line-height: 1;
+  }
+
+  .stars span { animation: star-in .5s ease-out backwards; }
+  .stars span:nth-child(2) { animation-delay: .25s; }
+  .stars span:nth-child(3) { animation-delay: .5s; }
+
+  @keyframes star-in {
+    from { transform: scale(0) rotate(-90deg); }
+  }
+
+  .end-title { font-size: clamp(54px, 14vw, 76px); line-height: 1; }
+
+  .recap {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .recap span {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+    padding: 4px;
+    border-radius: 16px;
+    background: #e3f5f1;
+    font-size: 30px;
+    line-height: 1.1;
+  }
+
+  .recap span.help { background: #fdeedd; }
+  .recap .read { font-size: 32px; color: var(--ink); }
+
+  .recap span::after {
+    content: "✓";
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--minute);
+    color: #fff;
+    font: bold 14px/22px system-ui, sans-serif;
+  }
+
+  .recap span.help::after { content: "↺"; background: var(--accent); }
+
+  .end-btns {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .round-btn {
+    min-width: 96px;
+    height: 96px;
+    padding: 0 22px;
+    font-size: 44px;
+    line-height: 1;
+    border: none;
+    border-radius: 48px;
+    background: var(--accent);
+    box-shadow: 0 7px 0 var(--accent-dark);
+    cursor: pointer;
+  }
+
+  .round-btn.go { background: var(--minute); box-shadow: 0 7px 0 var(--minute-dark); }
+  .round-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 var(--accent-dark); }
+  .round-btn.go:active { box-shadow: 0 3px 0 var(--minute-dark); }
+
+  .blocked .big-emoji { font-size: clamp(70px, 18vw, 100px); }
+
+  .small-btn {
+    font: inherit;
+    font-size: 17px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 999px;
+    background: var(--ring);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* ---------- Sternchen-Wirbel bei richtiger Antwort ---------- */
+  .burst {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .burst span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 26px;
+    transform: translate(-50%, -50%);
+    animation: fly .8s ease-out forwards;
+  }
+
+  @keyframes fly {
+    to {
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.5);
+      opacity: 0;
+    }
+  }
+
+  /* ---------- Fusszeile ---------- */
+  .hint {
+    font-size: 15px;
+    color: var(--soft);
+    text-align: center;
+    width: 100%;
+    max-width: 620px;
+    line-height: 1.6;
+  }
+
+  .hint kbd {
+    font: inherit;
+    background: #fff;
+    border: 2px solid var(--line);
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    padding: 1px 8px;
+    color: var(--ink);
+  }
+
+  /* ---------- Einstellungen (für Eltern) ---------- */
+  dialog.settings {
+    width: min(620px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    padding: 0;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  dialog.settings::backdrop { background: rgba(51, 64, 77, .45); }
+
+  .set-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 20px 20px 24px;
+  }
+
+  .set-body h2 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--ring);
+  }
+
+  .set-body fieldset {
+    margin: 0;
+    padding: 0;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .set-body legend {
+    padding: 0 0 6px;
+    font-weight: bold;
+    font-size: 17px;
+  }
+
+  .set-body .note {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--soft);
+  }
+
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .mode {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border: 3px solid var(--line);
+    border-radius: 16px;
+    cursor: pointer;
+  }
+
+  .mode:has(input:checked) { border-color: var(--ring); background: #eef2ff; }
+
+  .mode span { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+  .mode small { font-family: var(--read); font-size: 17px; color: var(--soft); }
+
+  .letter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 6px;
+  }
+
+  .lt { position: relative; cursor: pointer; }
+
+  .lt input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .lt-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 2px;
+    border: 3px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    line-height: 1.15;
+  }
+
+  .lt-box b {
+    font-family: var(--read);
+    font-size: 21px;
+    color: var(--soft);
+  }
+
+  .lt-box small { font-size: 18px; filter: grayscale(1); opacity: .45; }
+
+  .lt input:checked + .lt-box { border-color: var(--ring); background: #eef2ff; }
+  .lt input:checked + .lt-box b { color: var(--ring); }
+  .lt input:checked + .lt-box small { filter: none; opacity: 1; }
+  .lt input:focus-visible + .lt-box { outline: 4px solid var(--accent); outline-offset: 2px; }
+
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .quick button, .set-foot button {
+    font: inherit;
+    font-size: 15px;
+    padding: 7px 14px;
+    border: 2px solid var(--ring);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ring);
+    cursor: pointer;
+  }
+
+  .counts {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .counts .low { color: var(--hour); }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .check input { width: 22px; height: 22px; cursor: pointer; }
+
+  .set-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .set-foot .done {
+    background: var(--ring);
+    color: #fff;
+    font-size: 17px;
+    padding: 9px 24px;
+  }
+
+  .set-foot .reset { border-color: var(--line); color: var(--soft); }
+
+  /* ---------- Handy ---------- */
+  @media (max-width: 600px) {
+    body { padding: 14px 10px 28px; gap: 12px; }
+    h1 { font-size: 26px; }
+
+    .card { border-radius: 20px; padding: 12px; }
+
+    .levels { gap: 8px; }
+    .levels button { border-width: 3px; border-radius: 18px; padding: 8px 4px 6px; }
+
+    .speaker { width: 60px; height: 60px; font-size: 30px; }
+    .screen { min-height: 340px; }
+    .stim { min-height: 120px; }
+    .task { gap: 14px; }
+    .opts { gap: 10px; }
+    .opt { min-height: 88px; border-radius: 20px; }
+    .chip { min-width: 64px; min-height: 72px; padding: 4px 10px; }
+    .chips { gap: 9px; }
+    .hint { font-size: 14px; }
+    .mode small { font-size: 15px; }
+  }
+
+  /* ---------- Handy quer: Aufgabe links, Antworten rechts ---------- */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body { padding: 10px 12px 16px; gap: 8px; }
+    h1 { display: none; }
+    .levels { max-width: 520px; }
+    .levels button { flex-direction: row; justify-content: center; gap: 8px; padding: 4px 8px; }
+    .lv-icon { font-size: 28px; }
+    .lv-name { display: none; }
+    .card { padding: 10px 14px; }
+    .game { gap: 8px; }
+    .speaker { width: 52px; height: 52px; font-size: 26px; }
+    .screen { min-height: 0; }
+
+    .task {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+      align-items: center;
+    }
+
+    .stim { min-height: 0; }
+    .big-letter { font-size: 120px; }
+    .big-emoji, .listen { font-size: 86px; }
+    .big-word { font-size: 52px; }
+    .sentence { font-size: 30px; }
+    .opt { min-height: 80px; }
+    .opts.words { --cols: 3; max-width: none; }
+    .opt.word { font-size: 26px; min-height: 72px; padding-bottom: 14px; }
+    .slot { font-size: 40px; }
+    .chip { min-height: 64px; font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="index.html" class="home-link">🏠 Zur Startseite</a>
+  <button class="parent-btn" id="settingsBtn">⚙️ Einstellungen</button>
+</nav>
+
+<h1>📖 Lesen</h1>
+
+<div class="levels" id="levels"></div>
+
+<div class="card game">
+  <div class="topbar">
+    <button class="speaker" id="speakBtn" aria-label="Aufgabe nochmals vorlesen" hidden>🔊</button>
+    <div class="progress" id="progress" aria-hidden="true"></div>
+  </div>
+  <div class="screen" id="screen" aria-live="polite"></div>
+</div>
+
+<p class="hint">
+  <strong>Für Eltern:</strong> Eine Runde hat 10 Aufgaben. Der Lautsprecher 🔊 liest die Aufgabe
+  jederzeit nochmals vor, Wörter und Sätze kann das Kind antippen und sich vorlesen lassen.
+  Unter <strong>⚙️ Einstellungen</strong> wählen Sie die Schreibweise und die Buchstaben, die Ihr
+  Kind schon kennt – es kommen dann nur Wörter vor, die es auch lesen kann.
+  <br>Mit den Tasten <kbd>1</kbd>–<kbd>9</kbd> wählt man eine Antwort, <kbd>Leertaste</kbd> liest vor.
+</p>
+
+<dialog class="settings" id="settings">
+  <form method="dialog" class="set-body">
+    <h2>⚙️ Einstellungen</h2>
+
+    <fieldset>
+      <legend>Schrift</legend>
+      <div class="modes">
+        <label class="mode">
+          <span><input type="radio" name="mode" value="upper"> NUR GROSS</span>
+          <small>MAUS · DIE MAUS IST ROT.</small>
+        </label>
+        <label class="mode">
+          <span><input type="radio" name="mode" value="mixed"> Gross und klein</span>
+          <small>Maus · Die Maus ist rot.</small>
+        </label>
+      </div>
+      <p class="note">Bei „Gross und klein“ gibt es im Buchstaben-Level zusätzlich Aufgaben,
+        bei denen man M und m zusammenbringt.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Diese Buchstaben kennt mein Kind schon</legend>
+      <p class="note">In der Reihenfolge, wie sie oft in der Schule eingeführt werden.
+        In den Wort- und Satz-Aufgaben kommen nur Wörter vor, die ausschliesslich aus
+        angekreuzten Buchstaben bestehen.</p>
+      <div class="letter-grid" id="letterGrid"></div>
+      <div class="quick">
+        <button type="button" id="moreBtn">＋ nächster</button>
+        <button type="button" id="lessBtn">－ letzter</button>
+        <button type="button" id="allBtn">alle</button>
+        <button type="button" id="noneBtn">keine</button>
+      </div>
+      <p class="counts" id="counts"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Anzeige und Ton</legend>
+      <label class="check"><input type="checkbox" id="syllToggle"> Silben farbig mit Bögen zeigen (Wörter-Level)</label>
+      <label class="check"><input type="checkbox" id="soundToggle"> Spielgeräusche</label>
+      <p class="note" id="voiceNote"></p>
+    </fieldset>
+
+    <div class="set-foot">
+      <button type="button" class="reset" id="resetBtn">Sterne und Lernstand löschen</button>
+      <button class="done" value="ok">Fertig</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* =========================================================
+   Lesen lernen
+   Buchstaben, erste Wörter und kleine Sätze –
+   für Kinder, die (noch) nicht lesen können
+   ========================================================= */
+
+const ROUND = 10;          // Aufgaben pro Runde
+const MIN_WORDS = 4;       // so viele lesbare Wörter braucht Level 2
+const MIN_SENTENCES = 4;   // so viele lesbare Sätze braucht Level 3
+
+/* ---------- Buchstaben in Schul-Reihenfolge ----------
+   k: der Buchstabe (Grossform, dient auch als Schlüssel)
+   w/e: Anlautwort mit Bild – Buchstaben werden als Laut gelernt,
+        darum sagt die Sprachausgabe immer „M wie Maus“.
+   s: so soll die Sprachausgabe den Buchstaben sagen (nur wo nötig)
+   inner: der Laut steht nicht am Wortanfang („X wie in Hexe“) –
+          solche Buchstaben gibt es nicht bei „Womit fängt das an?“ */
+const LETTERS = [
+  { k: "M",   w: "Maus",         e: "🐭" },
+  { k: "A",   w: "Ananas",       e: "🍍" },
+  { k: "L",   w: "Löwe",         e: "🦁" },
+  { k: "I",   w: "Igel",         e: "🦔" },
+  { k: "O",   w: "Ohr",          e: "👂" },
+  { k: "S",   w: "Sonne",        e: "☀️" },
+  { k: "E",   w: "Elefant",      e: "🐘" },
+  { k: "R",   w: "Rakete",       e: "🚀" },
+  { k: "N",   w: "Nase",         e: "👃" },
+  { k: "U",   w: "Uhr",          e: "⏰" },
+  { k: "T",   w: "Tomate",       e: "🍅" },
+  { k: "F",   w: "Fisch",        e: "🐟" },
+  { k: "D",   w: "Dino",         e: "🦕" },
+  { k: "H",   w: "Hund",         e: "🐶" },
+  { k: "W",   w: "Wal",          e: "🐳" },
+  { k: "B",   w: "Banane",       e: "🍌" },
+  { k: "K",   w: "Katze",        e: "🐱" },
+  { k: "P",   w: "Pinguin",      e: "🐧" },
+  { k: "G",   w: "Gurke",        e: "🥒" },
+  { k: "Z",   w: "Zebra",        e: "🦓" },
+  { k: "J",   w: "Jacke",        e: "🧥" },
+  { k: "V",   w: "Vogel",        e: "🐦" },
+  { k: "C",   w: "Clown",        e: "🤡" },
+  { k: "Q",   w: "Quadrat",      e: "🟥" },
+  { k: "X",   w: "Hexe",         e: "🧙", inner: true },
+  { k: "Y",   w: "Yoga",         e: "🧘" },
+  { k: "Ä",   w: "Äffchen",      e: "🐒" },
+  { k: "Ö",   w: "Öl",           e: "🛢️" },
+  { k: "Ü",   w: "Überraschung", e: "🎁" },
+  { k: "AU",  w: "Auto",         e: "🚗" },
+  { k: "EI",  w: "Eis",          e: "🍦" },
+  { k: "EU",  w: "Eule",         e: "🦉" },
+  { k: "SCH", w: "Schaf",        e: "🐑" },
+  { k: "CH",  w: "Buch",         e: "📖", inner: true },
+  { k: "ST",  w: "Stern",        e: "⭐", s: "Scht" },
+  { k: "SP",  w: "Spinne",       e: "🕷️", s: "Schp" }
+];
+
+const BY_KEY = {};
+LETTERS.forEach(L => { BY_KEY[L.k] = L; });
+const ORDER = LETTERS.map(L => L.k);
+const DEFAULT_KNOWN = ORDER.slice(0, 11);       // M A L I O S E R N U T
+
+/* Buchstaben, die leicht verwechselt werden. Sie kommen erst als
+   Ablenker, wenn ein Buchstabe schon ein paar Mal sicher erkannt wurde. */
+const SIMILAR = [
+  ["M", "N"], ["M", "W"], ["N", "H"], ["E", "F"], ["P", "R"], ["B", "P"], ["B", "R"],
+  ["O", "Q"], ["C", "G"], ["U", "V"], ["I", "L"], ["I", "T"],
+  ["b", "d"], ["p", "q"], ["b", "p"], ["d", "q"], ["m", "n"], ["n", "u"], ["n", "h"],
+  ["i", "l"], ["i", "j"], ["a", "o"], ["e", "c"], ["f", "t"]
+];
+const MASTERED = 3;        // ab so vielen sicheren Treffern gilt ein Buchstabe als gefestigt
+
+/* Bei diesen sieht der Kleinbuchstabe aus wie ein kleiner Grossbuchstabe –
+   für „Finde das kleine m“ sind sie zu einfach und kommen nur zur Not. */
+const SAME_SHAPE = ["C", "K", "O", "P", "S", "U", "V", "W", "X", "Z"];
+
+/* ---------- Wörter ----------
+   Kurz, lautgetreu und gut als Bild zu zeigen. Format: "Sil-ben Bild Geschlecht"
+   (das Geschlecht braucht es für die Sätze: der/die/das, ein/eine/einen). */
+const WORD_LIST = [
+  // mit den ersten Buchstaben der Schul-Reihe (M A L I O S E R N U T) lesbar
+  "Ma-ma 👩 f",    "O-ma 👵 f",      "La-ma 🦙 n",     "Ro-se 🌹 f",     "Na-se 👃 f",
+  "Son-ne ☀️ f",   "En-te 🦆 f",     "Tor 🥅 n",       "Sa-lat 🥗 m",    "Nuss 🥜 f",
+  "Tas-se ☕ f",   "In-sel 🏝️ f",    "No-te 🎵 f",     "Me-lo-ne 🍉 f",  "To-ma-te 🍅 f",
+  "Tan-ne 🌲 f",   "Turm 🗼 m",      "Rol-ler 🛴 m",   "Man-tel 🧥 m",   "Tel-ler 🍽️ m",
+  "Meer 🌊 n",     "Tor-te 🎂 f",    "Rat-te 🐀 f",    "Tee 🍵 m",       "Lol-li 🍭 m",
+  "A-larm 🚨 m",   "Tram 🚋 n",      "Li-ne-al 📏 n",  "Mes-ser 🔪 n",   "Li-mo 🥤 f",
+  "Ot-ter 🦦 m",   "A-na-nas 🍍 f",
+  // weitere
+  "Pa-pa 👨 m",    "O-pa 👴 m",      "So-fa 🛋️ n",     "Au-to 🚗 n",     "Maus 🐭 f",
+  "I-gel 🦔 m",    "Hund 🐶 m",      "Ball ⚽ m",      "Mond 🌙 m",      "Wal 🐳 m",
+  "Hut 🎩 m",      "Ha-se 🐰 m",     "Eis 🍦 n",       "Ei 🥚 n",        "Rad 🚲 n",
+  "Fisch 🐟 m",    "Schaf 🐑 n",     "Di-no 🦕 m",     "Baum 🌳 m",      "Haus 🏠 n",
+  "Nu-del 🍝 f",   "Pilz 🍄 m",      "Bus 🚌 m",       "Ta-xi 🚕 n",     "Ti-ger 🐯 m",
+  "Ze-bra 🦓 n",   "Lu-pe 🔍 f",     "Ho-se 👖 f",     "Ka-mel 🐪 n",    "Eu-le 🦉 f",
+  "He-xe 🧙 f",    "Wolf 🐺 m",      "Bär 🐻 m",       "Lö-we 🦁 m",     "Tür 🚪 f",
+  "Ki-wi 🥝 f",    "Bir-ne 🍐 f",    "Do-se 🥫 f",     "Ga-bel 🍴 f",    "Buch 📖 n",
+  "Stern ⭐ m",    "Spin-ne 🕷️ f",   "Zelt ⛺ n",      "Tul-pe 🌷 f",    "Wol-ke ☁️ f",
+  "Hand ✋ f",     "Bein 🦵 n",      "Mund 👄 m",      "Brot 🍞 n",      "Wurst 🌭 f",
+  "Milch 🥛 f",    "U-fo 🛸 n",      "Ra-di-o 📻 n",   "Fo-to 📷 n",     "Kro-ne 👑 f",
+  "Du-sche 🚿 f",  "Ku-chen 🍰 m",   "Wol-le 🧶 f",    "Schal 🧣 m",     "Feu-er 🔥 n",
+  "Am-pel 🚦 f",   "Kat-ze 🐱 f",    "Ker-ze 🕯️ f",
+  "Hemd 👕 n",     "Wurm 🪱 m",      "Hen-ne 🐔 f",    "Bett 🛏️ n",      "Herz ❤️ n",
+  "Ho-nig 🍯 m",   "Hum-mer 🦞 m",   "Helm ⛑️ m",      "Ham-mer 🔨 m",   "Was-ser 💧 n",
+  "Wür-fel 🎲 m",  "Frosch 🐸 m",    "Fe-der 🪶 f",    "Fee 🧚 f",       "Del-fin 🐬 m",
+  "Dra-che 🐉 m",  "Af-fe 🐒 m",     "Ka-nu 🛶 n",     "Kof-fer 🧳 m",   "Kran 🏗️ m",
+  "Kra-ke 🐙 m",   "Kak-tus 🌵 m",   "Rüeb-li 🥕 n",   "Ba-na-ne 🍌 f",  "Bril-le 👓 f",
+  "Bal-lon 🎈 m",  "Bi-ber 🦫 m",    "Burg 🏰 f",      "Pin-sel 🖌️ m",   "Pan-da 🐼 m",
+  "Pal-me 🌴 f",   "Pa-ket 📦 n",    "Piz-za 🍕 f",    "Pu-del 🐩 m",    "Gur-ke 🥒 f",
+  "Geld 💰 n",     "Zug 🚆 m",       "Korb 🧺 m",      "Keks 🍪 m",      "Kir-sche 🍒 f",
+  "Klee ☘️ m",     "Pferd 🐴 n",     "Ap-fel 🍎 m",    "Axt 🪓 f",       "Jo-jo 🪀 n",
+  "Vo-gel 🐦 m",   "Kä-se 🧀 m",     "Sä-ge 🪚 f",     "Hüt-te 🛖 f",    "Müt-ze 🧢 f",
+  "Müs-li 🥣 n",   "Kür-bis 🎃 m",   "Au-ge 👁️ n",     "Rau-pe 🐛 f",    "Tau-be 🕊️ f",
+  "Trau-be 🍇 f",  "Lei-ter 🪜 f",   "Ei-mer 🪣 m",    "Kleid 👗 n",     "Schwein 🐷 n",
+  "Gei-ge 🎻 f",   "Reis 🍚 m",      "Stein 🪨 m",     "Sche-re ✂️ f",   "Schnee ❄️ m",
+  "Schu-le 🏫 f",  "Mu-schel 🐚 f",  "Schiff 🚢 n",    "Schirm ☂️ m",    "Ta-sche 👜 f",
+  "Loch 🕳️ n",     "Stift ✏️ m",     "Strand 🏖️ m",    "Saft 🧃 m",      "Ra-ke-te 🚀 f",
+  "Na-del 🪡 f",   "Mas-ke 🎭 f",    "Lam-pe 💡 f",    "Pa-pa-gei 🦜 m", "Ad-ler 🦅 m",
+  "Kä-fer 🪲 m"
+];
+
+const PERSONS = ["Mama", "Papa", "Oma", "Opa", "Mia", "Tim"];   // ohne Artikel
+
+/* Bilder, die man leicht verwechselt – nie zusammen als Auswahl zeigen */
+const CLASH = [
+  ["Baum", "Tanne", "Palme"], ["Kuchen", "Torte"], ["Hund", "Pudel", "Wolf"],
+  ["Maus", "Ratte"], ["Tee", "Tasse"], ["Meer", "Wasser"], ["Müsli", "Reis"],
+  ["Strand", "Insel"], ["Zug", "Tram"], ["Vogel", "Taube"], ["Raupe", "Wurm"],
+  ["Limo", "Saft"], ["Hütte", "Haus"], ["Axt", "Hammer"]
+];
+
+/* Mehrbuchstaben-Laute. ST und SP gelten nur am Wortanfang als eigener
+   Laut („Stern“ = Scht), mitten im Wort („Wurst“) sind es S und T. */
+const MULTI = ["SCH", "CH", "AU", "EI", "EU"];
+
+function graphemes(word) {
+  const w = word.toUpperCase().replace(/[^A-ZÄÖÜ]/g, "");
+  const out = [];
+  let i = 0;
+  while (i < w.length) {
+    let g = w[i];
+    if (i === 0 && (w.startsWith("ST") || w.startsWith("SP"))) g = w.slice(0, 2);
+    else {
+      const m = MULTI.find(x => w.startsWith(x, i));
+      if (m) g = m;
+    }
+    out.push(g);
+    i += g.length;
+  }
+  return out;
+}
+
+/* Alle Laute, die man für einen Text kennen muss */
+function needOf(text) {
+  return [...new Set(text.split(/\s+/).flatMap(graphemes))];
+}
+
+const WORDS = WORD_LIST.map(line => {
+  const [syl, e, g] = line.split(" ");
+  const plain = syl.replace(/-/g, "");
+  return { plain, syl: syl.split("-"), e, g, gr: graphemes(plain), need: needOf(plain) };
+});
+
+const WORD = {};
+WORDS.forEach(w => { WORD[w.plain] = w; });
+
+/* Namen und Mehrzahlwörter, die es nur in Sätzen gibt. Namen sind keine
+   Lern-Wörter: ein 👧 könnte jede heissen. */
+const EXTRA = {
+  Mia: "👧", Tim: "👦",
+  Tomaten: "🍅", "Nüsse": "🥜", Kekse: "🍪", Kirschen: "🍒", Trauben: "🍇",
+  Bananen: "🍌", "Äpfel": "🍎", Erdbeeren: "🍓"
+};
+
+function noun(name) { return WORD[name] || { plain: name, e: EXTRA[name] }; }
+
+function clash(a, b) {
+  return CLASH.some(group => group.includes(a.plain) && group.includes(b.plain));
+}
+
+/* ---------- Sätze mit Bild ----------
+   Die Sätze werden aus Bausteinen zusammengesetzt. Jeder Satz kennt sein
+   Bild, und die falschen Bilder unterscheiden sich in genau einem Teil –
+   so muss das Kind den ganzen Satz lesen, nicht nur das erste Wort. */
+const ART = { m: "der",   f: "die",  n: "das" };
+const DEF = { m: "den",   f: "die",  n: "das" };
+const NOM = { m: "ein",   f: "eine", n: "ein" };
+const ACC = { m: "einen", f: "eine", n: "ein" };
+const MAX_WORDS = 5;       // längere Sätze fallen weg
+
+const ANIMALS  = ["Hund", "Katze", "Maus", "Hase", "Bär", "Igel", "Lama", "Eule", "Tiger",
+                  "Ente", "Ratte", "Affe", "Panda", "Frosch", "Henne", "Schaf", "Schwein",
+                  "Löwe", "Otter", "Pferd"];
+const SUBJECTS = [...PERSONS, ...ANIMALS];
+const THINGS   = ["Ball", "Hut", "Rose", "Auto", "Buch", "Eis", "Ei", "Tasse", "Schal",
+                  "Kuchen", "Nuss", "Kiwi", "Birne", "Brot", "Wurst", "Lupe", "Krone",
+                  "Rad", "Gabel", "Radio", "Pilz", "Fisch", "Kerze", "Melone", "Tomate",
+                  "Dose", "Salat", "Tulpe", "Stern", "Ballon", "Brille", "Geige", "Lolli",
+                  "Koffer", "Paket", "Schirm", "Herz", "Hammer", "Pinsel", "Würfel", "Jojo",
+                  "Feder", "Schere", "Teller", "Lineal", "Stift", "Tasche", "Mütze", "Helm",
+                  "Maske", "Lampe", "Kleid", "Hemd", "Mantel", "Roller", "Apfel", "Banane",
+                  "Gurke", "Keks", "Käse", "Kürbis", "Muschel", "Torte", "Note"];
+/* ohne Artikel: „Oma isst Salat.“, „Tim trinkt Tee.“ */
+const FOOD     = ["Salat", "Melone", "Brot", "Wurst", "Kuchen", "Torte", "Käse", "Müsli",
+                  "Reis", "Honig", "Pizza", "Eis", "Tomaten", "Rüebli", "Nüsse", "Kekse",
+                  "Kirschen", "Trauben", "Bananen", "Äpfel", "Erdbeeren"];
+const DRINKS   = ["Tee", "Milch", "Wasser", "Saft", "Limo"];
+/* Orte für „… ist im Meer.“ / „… ist in der Dusche.“ */
+const PLACES   = ["Meer", "Turm", "Tor", "Zelt", "Bett", "Haus", "Schnee", "Zug", "Bus",
+                  "Auto", "Kanu", "Schiff", "Ufo", "Taxi", "Tram", "Korb", "Wasser",
+                  "Dusche", "Hütte", "Schule", "Burg"];
+/* Nur Bilder mit hellen Flächen lassen sich gut einfärben. */
+const COLORED  = ["Maus", "Ball", "Haus", "Wolke", "Ei", "Tasse", "Sofa", "Bus", "Fisch",
+                  "Hase", "Stern", "Krone", "Ballon", "Teller", "Schaf", "Lama", "Schiff",
+                  "Hemd", "Kleid", "Feder", "Muschel", "Würfel"];
+const COLORS   = { rot: "red", blau: "blue", "grün": "green", gelb: "yellow" };
+const SIZED    = ["Hund", "Maus", "Ball", "Baum", "Haus", "Fisch", "Hase", "Bär", "Auto",
+                  "Stern", "Pilz", "Igel", "Kamel", "Ente", "Dino", "Tanne", "Ratte", "Affe",
+                  "Panda", "Frosch", "Schwein", "Schaf", "Otter", "Löwe", "Kürbis", "Ballon",
+                  "Koffer", "Paket", "Stein", "Apfel", "Schiff", "Kaktus", "Pferd", "Henne",
+                  "Tiger", "Wal", "Zebra"];
+/* „Das ist eine Milch.“ klingt schief */
+const NOT_COUNTABLE = ["Milch", "Wolle", "Wasser", "Honig", "Reis", "Müsli", "Geld",
+                       "Schnee", "Klee"];
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function phrase(w) { return PERSONS.includes(w.plain) ? w.plain : ART[w.g] + " " + w.plain; }
+
+const SENTENCES = [];
+
+function addSentence(s) {
+  if (s.text.split(" ").length > MAX_WORDS) return;
+  s.need = needOf(s.text);
+  SENTENCES.push(s);
+}
+
+/* Satz „wer – tut – was/wo“: Bild aus zwei Emojis.
+   list: woraus die falschen Bilder für das „was/wo“ kommen */
+function addPair(kind, s, rest, o, list) {
+  addSentence({ kind, text: cap(phrase(s)) + " " + rest + ".", s, o, list });
+}
+
+SUBJECTS.forEach(a => {
+  const s = noun(a);
+  const person = PERSONS.includes(a);
+
+  // „hat einen“ und „hat den“: der bestimmte Artikel kommt ohne EI aus und
+  // ist darum schon früh in der Buchstaben-Reihe lesbar.
+  THINGS.forEach(b => {
+    const o = noun(b);
+    [ACC, DEF].forEach(art => addPair("have", s, "hat " + art[o.g] + " " + b, o, THINGS));
+  });
+  FOOD.forEach(b => addPair("eat", s, (person ? "isst " : "frisst ") + b, noun(b), FOOD));
+  DRINKS.forEach(b => addPair("drink", s, "trinkt " + b, noun(b), DRINKS));
+  [...FOOD, ...DRINKS].forEach(b => addPair("like", s, "mag " + b, noun(b), [...FOOD, ...DRINKS]));
+  PLACES.forEach(b => {
+    const o = noun(b);
+    addPair("place", s, "ist " + (o.g === "f" ? "in der " : "im ") + b, o, PLACES);
+  });
+});
+
+COLORED.forEach(x => Object.keys(COLORS).forEach(c => {
+  addSentence({ kind: "color", text: cap(phrase(WORD[x])) + " ist " + c + ".", n: WORD[x], c });
+}));
+
+SIZED.forEach(x => ["gross", "klein"].forEach(z => {
+  addSentence({ kind: "size", text: cap(phrase(WORD[x])) + " ist " + z + ".", n: WORD[x], z });
+}));
+
+WORDS.filter(w => !NOT_COUNTABLE.includes(w.plain)).forEach(w => {
+  const what = PERSONS.includes(w.plain) ? w.plain : NOM[w.g] + " " + w.plain;
+  addSentence({ kind: "this", text: "Das ist " + what + ".", n: w });
+});
+
+/* ---------- Stimmt das? ----------
+   Text, stimmt (1) oder nicht (0), Bild für nachher */
+const FACTS = [
+  // schon mit den ersten Buchstaben lesbar
+  ["Oma ist alt.", 1, "👵"],                ["Mia ist alt.", 0, "👧"],
+  ["Tim ist alt.", 0, "👦"],                ["Man isst Melonen.", 1, "🍉"],
+  ["Man isst Tomaten.", 1, "🍅"],           ["Man isst Salat.", 1, "🥗"],
+  ["Man isst Torte.", 1, "🎂"],             ["Man isst Rosen.", 0, "🌹"],
+  ["Man isst Tannen.", 0, "🌲"],            ["Man isst Teller.", 0, "🍽️"],
+  ["Man isst Lineale.", 0, "📏"],           ["Man isst Roller.", 0, "🛴"],
+  ["Ratten sind rot.", 0, "🐀"],            ["Tomaten sind rot.", 1, "🍅"],
+  ["Die Tomate ist rot.", 1, "🍅"],         ["Die Tomate ist blau.", 0, "🍅"],
+  ["Die Rose ist rot.", 1, "🌹"],           ["Die Tanne ist rot.", 0, "🌲"],
+  ["Die Ente ist rot.", 0, "🦆"],           ["Das Meer ist nass.", 1, "🌊"],
+  ["Das Meer ist rot.", 0, "🌊"],           ["Die Melone ist rund.", 1, "🍉"],
+  ["Die Sonne ist rund.", 1, "☀️"],         ["Der Teller ist rund.", 1, "🍽️"],
+  ["Der Turm ist rund.", 0, "🗼"],          ["Die Ratte ist rot.", 0, "🐀"],
+  // Tiere: was sie können und haben
+  ["Der Fisch kann schwimmen.", 1, "🐟"],   ["Der Fisch kann fliegen.", 0, "🐟"],
+  ["Der Fisch kann laufen.", 0, "🐟"],      ["Der Fisch kann klettern.", 0, "🐟"],
+  ["Die Ente kann schwimmen.", 1, "🦆"],    ["Der Vogel kann fliegen.", 1, "🐦"],
+  ["Der Hund kann bellen.", 1, "🐶"],       ["Die Katze kann bellen.", 0, "🐱"],
+  ["Die Katze kann miauen.", 1, "🐱"],      ["Der Hund kann miauen.", 0, "🐶"],
+  ["Der Hund kann lesen.", 0, "🐶"],        ["Der Bär kann lesen.", 0, "🐻"],
+  ["Die Kuh kann fliegen.", 0, "🐄"],       ["Die Kuh gibt Milch.", 1, "🐄"],
+  ["Die Kuh macht Muh.", 1, "🐄"],          ["Die Ente macht Muh.", 0, "🦆"],
+  ["Der Frosch kann hüpfen.", 1, "🐸"],     ["Der Affe kann klettern.", 1, "🐒"],
+  ["Der Elefant kann fliegen.", 0, "🐘"],   ["Die Biene macht Honig.", 1, "🐝"],
+  ["Der Hund macht Honig.", 0, "🐶"],       ["Das Huhn legt Eier.", 1, "🐔"],
+  ["Der Hund legt Eier.", 0, "🐶"],         ["Die Henne legt Eier.", 1, "🐔"],
+  ["Der Hase hat lange Ohren.", 1, "🐰"],   ["Die Schlange hat Beine.", 0, "🐍"],
+  ["Der Hund hat vier Beine.", 1, "🐶"],    ["Der Vogel hat vier Beine.", 0, "🐦"],
+  ["Die Spinne hat acht Beine.", 1, "🕷️"],  ["Der Igel hat Stacheln.", 1, "🦔"],
+  ["Der Kaktus hat Stacheln.", 1, "🌵"],    ["Der Tiger hat Streifen.", 1, "🐯"],
+  ["Das Zebra hat Streifen.", 1, "🦓"],     ["Das Zebra ist lila.", 0, "🦓"],
+  ["Die Ente hat Federn.", 1, "🦆"],        ["Der Vogel hat Federn.", 1, "🐦"],
+  ["Die Katze hat Federn.", 0, "🐱"],       ["Der Wal hat Federn.", 0, "🐳"],
+  ["Der Hund hat Fell.", 1, "🐶"],          ["Der Bär hat Fell.", 1, "🐻"],
+  ["Der Fisch hat Fell.", 0, "🐟"],         ["Die Ente hat einen Schnabel.", 1, "🦆"],
+  ["Der Hund hat einen Schnabel.", 0, "🐶"],["Der Elefant hat einen Rüssel.", 1, "🐘"],
+  ["Die Maus hat einen Rüssel.", 0, "🐭"],  ["Die Schnecke ist langsam.", 1, "🐌"],
+  ["Die Schnecke ist schnell.", 0, "🐌"],   ["Die Eule schläft am Tag.", 1, "🦉"],
+  ["Die Maus mag Käse.", 1, "🐭"],          ["Der Hase mag Rüebli.", 1, "🐰"],
+  ["Der Affe mag Bananen.", 1, "🐒"],       ["Die Katze trinkt Milch.", 1, "🐱"],
+  ["Die Kuh frisst Gras.", 1, "🐄"],        ["Die Kuh frisst Steine.", 0, "🐄"],
+  ["Der Löwe frisst Gras.", 0, "🦁"],       ["Der Fisch lebt im Wasser.", 1, "🐟"],
+  ["Der Wal lebt im Meer.", 1, "🐳"],       ["Der Hase lebt im Wasser.", 0, "🐰"],
+  ["Der Löwe ist ein Tier.", 1, "🦁"],      ["Der Hund ist ein Tier.", 1, "🐶"],
+  ["Die Rose ist ein Tier.", 0, "🌹"],      ["Die Tomate ist ein Tier.", 0, "🍅"],
+  ["Die Tanne ist ein Baum.", 1, "🌲"],     ["Der Hund ist ein Baum.", 0, "🐶"],
+  // gross und klein
+  ["Der Wal ist gross.", 1, "🐳"],          ["Der Wal ist klein.", 0, "🐳"],
+  ["Die Maus ist klein.", 1, "🐭"],         ["Die Maus ist riesig.", 0, "🐭"],
+  ["Der Elefant ist gross.", 1, "🐘"],      ["Der Elefant ist klein.", 0, "🐘"],
+  ["Das Baby ist klein.", 1, "👶"],         ["Das Baby ist alt.", 0, "👶"],
+  ["Opa ist alt.", 1, "👴"],                ["Papa ist ein Baby.", 0, "👨"],
+  // Farben
+  ["Die Sonne ist gelb.", 1, "☀️"],         ["Die Sonne ist blau.", 0, "☀️"],
+  ["Der Salat ist grün.", 1, "🥗"],         ["Die Gurke ist grün.", 1, "🥒"],
+  ["Die Banane ist gelb.", 1, "🍌"],        ["Die Banane ist blau.", 0, "🍌"],
+  ["Die Zitrone ist gelb.", 1, "🍋"],       ["Die Zitrone ist lila.", 0, "🍋"],
+  ["Die Kirsche ist rot.", 1, "🍒"],        ["Die Kirsche ist blau.", 0, "🍒"],
+  ["Die Erdbeere ist rot.", 1, "🍓"],       ["Die Erdbeere ist blau.", 0, "🍓"],
+  ["Der Himmel ist blau.", 1, "🌤️"],        ["Der Himmel ist grün.", 0, "🌤️"],
+  ["Das Gras ist grün.", 1, "🌱"],          ["Das Gras ist lila.", 0, "🌱"],
+  ["Der Schnee ist weiss.", 1, "❄️"],       ["Die Nase ist blau.", 0, "👃"],
+  // heiss, kalt, nass …
+  ["Das Eis ist kalt.", 1, "🍦"],           ["Das Eis ist heiss.", 0, "🍦"],
+  ["Das Feuer ist heiss.", 1, "🔥"],        ["Das Feuer ist kalt.", 0, "🔥"],
+  ["Der Tee ist heiss.", 1, "🍵"],          ["Der Schnee ist heiss.", 0, "❄️"],
+  ["Der Schnee ist warm.", 0, "❄️"],        ["Die Sonne ist heiss.", 1, "☀️"],
+  ["Die Sonne ist kalt.", 0, "☀️"],         ["Der Regen ist nass.", 1, "🌧️"],
+  ["Der Regen ist trocken.", 0, "🌧️"],      ["Im Winter ist es kalt.", 1, "⛄"],
+  ["Im Winter schneit es.", 1, "❄️"],       ["Im Sommer schneit es.", 0, "☀️"],
+  ["Im Sommer ist es heiss.", 1, "☀️"],     ["Die Nacht ist dunkel.", 1, "🌙"],
+  ["Die Nacht ist hell.", 0, "🌙"],         ["Am Tag ist es hell.", 1, "☀️"],
+  ["Der Mond ist am Himmel.", 1, "🌙"],     ["Eis schmilzt in der Sonne.", 1, "🍦"],
+  // Dinge
+  ["Der Ball ist rund.", 1, "⚽"],          ["Der Ball ist eckig.", 0, "⚽"],
+  ["Das Ei ist eckig.", 0, "🥚"],           ["Die Torte ist süss.", 1, "🎂"],
+  ["Die Zitrone ist süss.", 0, "🍋"],       ["Die Zitrone ist sauer.", 1, "🍋"],
+  ["Das Bonbon ist süss.", 1, "🍬"],        ["Die Banane ist krumm.", 1, "🍌"],
+  ["Der Stein ist hart.", 1, "🪨"],         ["Der Stein ist weich.", 0, "🪨"],
+  ["Der Stein kann schwimmen.", 0, "🪨"],   ["Die Wolle ist weich.", 1, "🧶"],
+  ["Die Feder ist leicht.", 1, "🪶"],       ["Das Messer ist scharf.", 1, "🔪"],
+  ["Die Kerze brennt.", 1, "🕯️"],           ["Der Clown ist lustig.", 1, "🤡"],
+  ["Das Auto hat Räder.", 1, "🚗"],         ["Das Auto kann fliegen.", 0, "🚗"],
+  ["Das Velo hat zwei Räder.", 1, "🚲"],    ["Das Flugzeug kann fliegen.", 1, "✈️"],
+  ["Das Schiff kann fliegen.", 0, "🚢"],    ["Das Schiff ist im Wasser.", 1, "🚢"],
+  ["Die Woche hat sieben Tage.", 1, "📅"],  ["Die Hand hat fünf Finger.", 1, "✋"],
+  ["Die Hand hat neun Finger.", 0, "✋"],   ["Der Turm ist hoch.", 1, "🗼"],
+  ["Man trinkt Tee.", 1, "🍵"],             ["Man trinkt Milch.", 1, "🥛"],
+  ["Man trinkt Wasser.", 1, "💧"],          ["Man trinkt Sand.", 0, "🏖️"],
+  ["Man isst Brot.", 1, "🍞"],              ["Man isst Nüsse.", 1, "🥜"],
+  ["Man isst Steine.", 0, "🪨"],            ["Man isst Autos.", 0, "🚗"]
+].map(([text, ok, e]) => ({ text, ok: !!ok, e, need: needOf(text) }));
+
+/* ---------- Levels ----------
+   read: das Symbol ist ein Buchstabe und steht in der Lese-Schrift */
+const LEVELS = [
+  { name: "Buchstaben", icon: "A", read: true },
+  { name: "Wörter",     icon: "🐭" },
+  { name: "Sätze",      icon: "💬" }
+];
+
+const PRAISE = ["Super!", "Toll!", "Richtig!", "Prima!", "Bravo!", "Juhu!", "Gut gemacht!", "Genau!"];
+const PRAISE_EMOJI = ["⭐", "✨", "🌟", "🎉"];
+
+/* =========================================================
+   Speicher
+   ========================================================= */
+const STORE = "lesenLernen";
+const STORE_V = 1;
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE)) || {}; }
+  catch (e) { return {}; }
+}
+
+function saveStore() {
+  try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* egal */ }
+}
+
+let store = loadStore();
+if (store.v !== STORE_V) store = { v: STORE_V };
+if (store.mode !== "upper" && store.mode !== "mixed") store.mode = "upper";
+if (!Array.isArray(store.known)) store.known = DEFAULT_KNOWN.slice();
+store.known = ORDER.filter(k => store.known.includes(k));
+if (typeof store.syll !== "boolean") store.syll = true;
+if (typeof store.sound !== "boolean") store.sound = true;
+if (!store.best) store.best = {};
+if (!store.weak) store.weak = {};     // Schlüssel → wie oft zuletzt falsch (wird wiederholt)
+if (!store.know) store.know = {};     // Schlüssel → wie oft auf Anhieb richtig
+
+function best(i) { return store.best[i] || 0; }
+
+/* =========================================================
+   Was kann das Kind lesen?
+   ========================================================= */
+function knownSet() { return new Set(store.known); }
+
+function readable(item, set) { return item.need.every(g => set.has(g)); }
+
+function poolsFor(set) {
+  return {
+    letters:   LETTERS.filter(L => set.has(L.k)),
+    words:     WORDS.filter(w => readable(w, set)),
+    sentences: SENTENCES.filter(s => readable(s, set)),
+    facts:     FACTS.filter(f => readable(f, set))
+  };
+}
+
+let pools = poolsFor(knownSet());
+
+function sentenceCount(p) { return p.sentences.length + p.facts.length; }
+
+/* Fehlt es an Wörtern, schlagen wir die nächsten Buchstaben der
+   Schul-Reihe vor, bis es genug sind. */
+function suggestion(count, min) {
+  const set = knownSet();
+  const extra = [];
+  for (const k of ORDER) {
+    if (set.has(k)) continue;
+    set.add(k);
+    extra.push(k);
+    const n = count(poolsFor(set));
+    if (n >= min) return { letters: extra, n };
+    if (extra.length >= 6) break;
+  }
+  return null;
+}
+
+/* =========================================================
+   Anzeige: NUR GROSS oder Gross und klein
+   ========================================================= */
+function shown(text) { return store.mode === "upper" ? text.toUpperCase() : text; }
+
+/* Buchstabe in Gross- oder Kleinform. Im Modus „NUR GROSS“ immer gross;
+   Mehrbuchstaben-Laute gross geschrieben als „Sch“, klein als „sch“. */
+function letterText(L, form) {
+  if (store.mode === "upper") return L.k;
+  const low = L.k.toLowerCase();
+  return form === "lower" ? low : cap(low);
+}
+
+function similar(a, b) {
+  return SIMILAR.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+/* Wort mit oder ohne Silbenbögen */
+function wordHTML(w) {
+  if (!store.syll) return shown(w.plain);
+  return w.syl.map((s, i) => '<span class="syl s' + (i % 2) + '">' + shown(s) + "</span>").join("");
+}
+
+/* Satz, bei dem jedes Wort ein Knopf zum Vorlesen ist */
+function sentenceHTML(text) {
+  return splitSentence(text).map(({ word, mark }) =>
+    '<button class="w" data-say="' + word + '">' + shown(word) + "</button>" + mark
+  ).join(" ");
+}
+
+/* Satz in Wörter und Satzzeichen zerlegen: „Oma hat den Ball.“ →
+   [{word: "Oma", mark: ""}, …, {word: "Ball", mark: "."}] */
+function splitSentence(text) {
+  return text.split(" ").map(t => {
+    const m = t.match(/^(.*?)([.,!?]*)$/);
+    return { word: m[1], mark: m[2] };
+  });
+}
+
+/* Bild zu einem Satz: ein oder zwei Emojis, eingefärbt oder gross/klein */
+function picOf(s) {
+  if (s.o)                return { a: s.s.e, b: s.o.e };
+  if (s.kind === "color") return { a: s.n.e, tint: COLORS[s.c] };
+  if (s.kind === "size")  return { a: s.n.e, size: s.z };
+  return { a: s.n.e };
+}
+
+function picHTML(p) {
+  if (p.b) return '<span class="pair"><span class="em">' + p.a + '</span><span class="em">' + p.b + "</span></span>";
+  const cls = p.tint ? " tint-" + p.tint : p.size ? (p.size === "gross" ? " huge" : " tiny") : "";
+  return '<span class="em' + cls + '">' + p.a + "</span>";
+}
+
+/* =========================================================
+   Hilfsmittel
+   ========================================================= */
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Mischen, aber nie genau in der richtigen Reihenfolge lassen */
+function scramble(arr) {
+  if (new Set(arr).size < 2) return arr.slice();
+  let a;
+  do { a = shuffle(arr); } while (a.join("|") === arr.join("|"));
+  return a;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* Zieht ein Element; was zuletzt falsch war, kommt häufiger. Was in dieser
+   Runde schon dran war, kommt erst wieder, wenn sonst nichts übrig ist –
+   und dann wenigstens nicht gleich hintereinander. */
+function pickWeighted(items, keyOf) {
+  let cand = items.filter(it => !round.recent.includes(keyOf(it)));
+  if (!cand.length) {
+    const avoid = round.recent.slice(-Math.min(3, items.length - 1));
+    cand = items.filter(it => !avoid.includes(keyOf(it)));
+  }
+  if (!cand.length) cand = items;
+  const weights = cand.map(it => 1 + 2 * (store.weak[keyOf(it)] || 0));
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < cand.length; i++) {
+    r -= weights[i];
+    if (r < 0) return cand[i];
+  }
+  return cand[cand.length - 1];
+}
+
+/* =========================================================
+   Sprachausgabe
+   Deutsche Stimme, Schweizer Stimme bevorzugt. speak() gibt ein
+   Versprechen zurück, das nach der Ansage erfüllt ist – so wartet das
+   Lob, bis es fertig gesprochen ist, bevor die nächste Aufgabe kommt.
+   ========================================================= */
+const hasSpeech = "speechSynthesis" in window;
+let voice = null;
+let utterance = null;      // festhalten, sonst räumt Chrome sie vorzeitig weg
+
+function pickVoice() {
+  const de = speechSynthesis.getVoices().filter(v => /^de([-_]|$)/i.test(v.lang));
+  voice = de.find(v => /^de[-_]CH/i.test(v.lang)) ||
+          de.find(v => /^de[-_]DE/i.test(v.lang)) ||
+          de[0] || null;
+  paintVoiceNote();
+}
+
+function speak(text) {
+  if (!hasSpeech || !text) return Promise.resolve();
+  speechSynthesis.cancel();                 // laufende Ansage abbrechen
+  speakBtn.classList.add("talking");
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text);
+    utterance = u;
+    u.lang = voice ? voice.lang.replace("_", "-") : "de-DE";
+    if (voice) u.voice = voice;
+    u.rate = 0.85;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      if (utterance === u) speakBtn.classList.remove("talking");
+      resolve();
+    };
+    // Manche Browser melden das Ende nie – dann hilft die Uhr.
+    const guard = setTimeout(finish, 2000 + text.length * 90);
+    u.onend = finish;
+    u.onerror = finish;
+    speechSynthesis.speak(u);
+  });
+}
+
+/* „M wie Maus“ – Mehrbuchstaben-Laute so geschrieben, dass die Stimme
+   sie als Laut liest („Sch“ statt „S-C-H“). */
+function sayLetter(L) {
+  const sound = L.s || (L.k.length > 1 ? cap(L.k.toLowerCase()) : L.k);
+  return sound + " wie " + (L.inner ? "in " : "") + L.w;
+}
+
+/* =========================================================
+   Elemente
+   ========================================================= */
+const levelsBox   = document.getElementById("levels");
+const progressBox = document.getElementById("progress");
+const screen      = document.getElementById("screen");
+const speakBtn    = document.getElementById("speakBtn");
+const settings    = document.getElementById("settings");
+const letterGrid  = document.getElementById("letterGrid");
+const countsEl    = document.getElementById("counts");
+const syllToggle  = document.getElementById("syllToggle");
+const soundToggle = document.getElementById("soundToggle");
+const voiceNote   = document.getElementById("voiceNote");
+
+let level = 0;
+let flow = 0;          // jeder Neustart erhöht flow – alte Zeitgeber laufen dann ins Leere
+let round = null;      // { n, results, labels, retry, recent, bag }
+let task = null;       // die aktuelle Aufgabe
+let busy = false;      // während Lob und Übergang keine Eingaben
+let view = "start";    // start | task | end | blocked
+
+for (let i = 0; i < ROUND; i++) progressBox.appendChild(document.createElement("i"));
+
+if (hasSpeech) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+
+/* ---------- Level-Knöpfe ---------- */
+LEVELS.forEach((lv, i) => {
+  const b = document.createElement("button");
+  b.setAttribute("aria-pressed", i === level);
+  b.onclick = () => {
+    b.blur();
+    if (i === level && view !== "end") return;
+    level = i;
+    showStart();
+  };
+  levelsBox.appendChild(b);
+});
+
+function starsHTML(n) {
+  let s = "";
+  for (let i = 0; i < 3; i++) s += i < n ? "<span>⭐</span>" : '<span class="off">⭐</span>';
+  return s;
+}
+
+function levelIcon(i) {
+  const lv = LEVELS[i];
+  if (!lv.read) return lv.icon;
+  return store.mode === "upper" ? "A" : "Aa";
+}
+
+function paintLevels() {
+  [...levelsBox.children].forEach((b, i) => {
+    b.setAttribute("aria-pressed", i === level);
+    b.setAttribute("aria-label", "Level " + (i + 1) + ": " + LEVELS[i].name);
+    b.innerHTML =
+      '<span class="lv-icon' + (LEVELS[i].read ? " read" : "") + '" aria-hidden="true">' + levelIcon(i) + "</span>" +
+      '<span class="lv-name">' + LEVELS[i].name + "</span>" +
+      '<span class="lv-stars" aria-hidden="true">' + starsHTML(best(i)) + "</span>";
+  });
+}
+
+function paintProgress() {
+  [...progressBox.children].forEach((el, i) => {
+    el.className = !round ? ""
+                 : i < round.results.length ? round.results[i]
+                 : i === round.results.length && view === "task" ? "now" : "";
+  });
+}
+
+/* =========================================================
+   Start, zu wenig Wörter, Ende
+   ========================================================= */
+
+/* Prüft, ob das Level mit den gewählten Buchstaben spielbar ist.
+   Gibt sonst einen Text für die Eltern zurück. */
+function blockedText() {
+  const known = store.known.length;
+  if (level === 0 && !known) {
+    return "Es ist noch kein Buchstabe angekreuzt. Wählen Sie in den Einstellungen die Buchstaben, " +
+           "die Ihr Kind schon kennt – zum Beginnen reicht einer.";
+  }
+  const count = level === 1 ? p => p.words.length : p => sentenceCount(p);
+  const min   = level === 1 ? MIN_WORDS : MIN_SENTENCES;
+  const what  = level === 1 ? "Wörter" : "Sätze";
+  if (level === 0 || count(pools) >= min) return "";
+
+  const sug = suggestion(count, min);
+  return "Mit den angekreuzten Buchstaben passen erst <b>" + count(pools) + " " + what + "</b> " +
+         "– für dieses Level braucht es mindestens " + min + ". " +
+         (sug ? "Kommen <b>" + sug.letters.join(", ") + "</b> dazu, sind es " + sug.n + "." : "");
+}
+
+function showStart() {
+  flow++;
+  if (hasSpeech) speechSynthesis.cancel();
+  round = null;
+  task = null;
+  busy = false;
+  paintLevels();
+
+  const problem = blockedText();
+  view = problem ? "blocked" : "start";
+  speakBtn.hidden = true;
+  paintProgress();
+
+  if (problem) {
+    screen.innerHTML =
+      '<div class="blocked">' +
+        '<div class="big-emoji" aria-hidden="true">🙈</div>' +
+        '<p class="parent-note">' + problem + "</p>" +
+        '<button class="small-btn" id="toSettings">⚙️ Buchstaben wählen</button>' +
+      "</div>";
+    document.getElementById("toSettings").onclick = openSettings;
+    return;
+  }
+
+  const info = level === 0 ? store.known.length + " Buchstaben"
+             : level === 1 ? pools.words.length + " Wörter"
+             : sentenceCount(pools) + " Sätze";
+
+  screen.innerHTML =
+    '<div class="start">' +
+      '<div class="start-icon' + (LEVELS[level].read ? " read" : "") + '" aria-hidden="true">' + levelIcon(level) + "</div>" +
+      '<div class="lv-stars" aria-hidden="true">' + starsHTML(best(level)) + "</div>" +
+      '<button class="play" id="playBtn" aria-label="Los geht’s">▶</button>' +
+      '<p class="parent-note">10 Aufgaben · ' + info + " passen zu den gewählten Buchstaben</p>" +
+    "</div>";
+  // Das Antippen von ▶ schaltet auf dem iPad auch die Sprachausgabe frei.
+  document.getElementById("playBtn").onclick = startRound;
+}
+
+function startRound() {
+  flow++;
+  round = { n: 0, results: [], labels: [], retry: [], recent: [], bag: makeBag() };
+  nextTask();
+}
+
+/* Aufgabenarten gleichmässig auf die Runde verteilen */
+function makeBag() {
+  const types = availableTypes();
+  const bag = [];
+  for (let i = 0; i < ROUND; i++) bag.push(types[i % types.length]);
+  return shuffle(bag);
+}
+
+function availableTypes() {
+  if (level === 0) {
+    const t = ["start"];
+    if (hasSpeech) t.push("hear");
+    if (store.mode === "mixed") t.push("pair");
+    return t;
+  }
+  if (level === 1) return ["read", "find", "build"];
+  const t = [];
+  if (pools.sentences.length) t.push("pic", "order");
+  if (pools.facts.length) t.push("truth");
+  return t;
+}
+
+function endRound() {
+  view = "end";
+  task = null;
+  speakBtn.hidden = true;
+  paintProgress();
+
+  const good = round.results.filter(r => r === "good").length;
+  const stars = good >= 9 ? 3 : good >= 6 ? 2 : 1;
+  if (stars > best(level)) { store.best[level] = stars; saveStore(); }
+  paintLevels();
+
+  const next = level < LEVELS.length - 1 && stars === 3;
+  screen.innerHTML =
+    '<div class="end">' +
+      '<div class="end-title" aria-hidden="true">' + (stars === 3 ? "🏆" : "🎉") + "</div>" +
+      '<div class="stars" role="img" aria-label="' + stars + ' von 3 Sternen">' + starsHTML(stars) + "</div>" +
+      '<div class="recap">' +
+        round.labels.map((l, i) => '<span class="' + round.results[i] + '">' + l + "</span>").join("") +
+      "</div>" +
+      '<div class="end-btns">' +
+        '<button class="round-btn" id="againBtn" aria-label="Nochmal spielen">🔁</button>' +
+        (next ? '<button class="round-btn go" id="nextBtn" aria-label="Nächstes Level">➡️ ' +
+                LEVELS[level + 1].icon + "</button>" : "") +
+      "</div>" +
+    "</div>";
+
+  document.getElementById("againBtn").onclick = startRound;
+  if (next) document.getElementById("nextBtn").onclick = () => { level++; showStart(); };
+
+  confettiAt(screen.querySelector(".stars"));
+  chime();
+  speak("Geschafft! Du hast " + (stars === 1 ? "einen Stern" : stars + " Sterne") + " bekommen.");
+}
+
+/* =========================================================
+   Aufgaben bauen
+   Jede Aufgabe ist ein Objekt mit:
+     type, item, key      – Art, Gegenstand, Schlüssel für die Wiederholung
+     label                – kleines Bild für die Übersicht am Schluss
+     stim                 – was oben gezeigt wird (HTML)
+     options | build      – Antwortknöpfe oder Kärtchen zum Legen
+     say, sayFull         – automatische Ansage / Ansage beim Lautsprecher
+     extra                – wird nach dem Lob gesagt („M wie Maus“)
+   ========================================================= */
+function nextTask() {
+  busy = false;
+  if (round.n >= ROUND) { endRound(); return; }
+
+  // Was vorher falsch war, kommt drei Aufgaben später nochmals.
+  const due = round.retry.findIndex(r => r.due <= round.n);
+  if (due >= 0) {
+    const r = round.retry.splice(due, 1)[0];
+    task = makeTask(r.type, r.item);
+  } else {
+    task = makeTask(round.bag[round.n]);
+  }
+  task.errors = 0;
+  task.helped = false;
+  round.recent.push(task.key);
+
+  view = "task";
+  speakBtn.hidden = false;
+  renderTask();
+  paintProgress();
+  speak(task.say);
+}
+
+function makeTask(type, item) {
+  if (level === 0) return letterTask(type, item);
+  if (level === 1) return wordTask(type, item);
+  return sentenceTask(type, item);
+}
+
+/* ---------- Level 1: Buchstaben ---------- */
+function letterTask(type, L) {
+  let pool = pools.letters;
+  if (type === "start") pool = pool.filter(x => !x.inner);
+  if (type === "pair") {
+    pool = pool.filter(x => x.k.length === 1);
+    const distinctShape = pool.filter(x => !SAME_SHAPE.includes(x.k));
+    if (distinctShape.length) pool = distinctShape;
+  }
+  if (!pool.length) { type = "hear"; pool = pools.letters; }
+  if (type === "hear" && !hasSpeech) type = "start";
+  if (!L) L = pickWeighted(pool, x => "L:" + x.k);
+
+  const mixed = store.mode === "mixed";
+  // Im Modus „Gross und klein“ wird mal die grosse, mal die kleine Form geübt.
+  let form = mixed && Math.random() < .5 ? "lower" : "upper";
+  let optForm = form;
+  if (type === "pair") optForm = form === "upper" ? "lower" : "upper";
+
+  const many = pools.letters.length >= 5 && (store.know["L:" + L.k] || 0) >= 2;
+  const opts = letterChoices(L, optForm, many ? 4 : 3, type === "pair");
+
+  const t = {
+    type, item: L, key: "L:" + L.k,
+    label: '<b class="read">' + letterText(L, form) + "</b>",
+    extra: sayLetter(L),
+    options: opts.map(x => ({ html: letterText(x, optForm), correct: x === L, cls: "letter" }))
+  };
+
+  if (type === "hear") {
+    t.stim = '<button class="listen" data-repeat aria-label="Nochmals hören">👂</button>';
+    t.say = sayLetter(L) + ". Wo ist der Buchstabe?";
+  } else if (type === "start") {
+    t.stim = '<div class="big-emoji" role="img" aria-label="' + L.w + '">' + L.e + "</div>";
+    t.say = L.w + ". Mit welchem Buchstaben fängt " + L.w + " an?";
+  } else {
+    const a = form === "upper" ? "grosse" : "kleine", b = form === "upper" ? "kleine" : "grosse";
+    t.stim = '<div class="big-letter">' + letterText(L, form) + "</div>";
+    t.say = "Das ist das " + a + " " + L.k + ". Wo ist das " + b + " " + L.k + "?";
+  }
+  t.sayFull = t.say;
+  return t;
+}
+
+/* Ablenker: bekannte Buchstaben, ähnliche erst wenn der Buchstabe sitzt.
+   Kennt das Kind zu wenige, wird mit den nächsten der Schul-Reihe aufgefüllt. */
+function letterChoices(L, form, n, singleOnly) {
+  const target = letterText(L, form);
+  const mastered = (store.know["L:" + L.k] || 0) >= MASTERED;
+  const fits = x => x !== L && letterText(x, form) !== target && (!singleOnly || x.k.length === 1);
+  const isSim = x => similar(letterText(x, form), target);
+
+  const known = LETTERS.filter(x => fits(x) && store.known.includes(x.k));
+  const chosen = [];
+  const sim = known.filter(isSim);
+  if (mastered && sim.length && Math.random() < .7) chosen.push(pick(sim));
+  chosen.push(...shuffle(known.filter(x => !isSim(x))).slice(0, n - 1 - chosen.length));
+
+  if (chosen.length < n - 1) {
+    const more = LETTERS.filter(x => fits(x) && !chosen.includes(x) && (mastered || !isSim(x)));
+    chosen.push(...more.slice(0, n - 1 - chosen.length));
+  }
+  return shuffle([L, ...chosen]);
+}
+
+/* ---------- Level 2: Wörter ---------- */
+function wordTask(type, W) {
+  if (!W) W = pickWeighted(pools.words, x => "W:" + x.plain);
+  const t = { type, item: W, key: "W:" + W.plain, label: W.e, extra: W.plain };
+
+  if (type === "read") {
+    // Bilder mit gleichem Anfangsbuchstaben: dann reicht der erste Buchstabe nicht.
+    const others = WORDS.filter(x => x !== W && x.e !== W.e && !clash(x, W));
+    const same = shuffle(others.filter(x => x.gr[0] === W.gr[0]));
+    const pics = distinct([...same.slice(0, 1), ...shuffle(others)], 2, x => x.e);
+    t.stim = '<div class="big-word"><button class="w" data-say="' + W.plain + '">' + wordHTML(W) + "</button></div>";
+    t.options = shuffle([W, ...pics]).map(x => ({
+      html: '<span class="em">' + x.e + "</span>", correct: x === W, cls: "thumb", aria: x.plain
+    }));
+    t.say = "Lies das Wort. Welches Bild passt?";
+    t.sayFull = t.say + " Das Wort heisst: " + W.plain + ".";
+  } else if (type === "find") {
+    // Ablenker möglichst ähnlich: gleicher Anfang oder gleiche Länge
+    const others = pools.words.filter(x => x !== W && x.e !== W.e);
+    const near = shuffle(others.filter(x => x.gr[0] === W.gr[0] || x.gr.length === W.gr.length));
+    const words = distinct([...near, ...shuffle(others)], 2, x => x.plain);
+    t.stim = '<div class="big-emoji" role="img" aria-label="' + W.plain + '">' + W.e + "</div>";
+    t.options = shuffle([W, ...words]).map(x => ({ html: wordHTML(x), correct: x === W, cls: "word" }));
+    t.wordOpts = true;
+    t.say = W.plain + ". Wo steht " + W.plain + "?";
+    t.sayFull = t.say;
+  } else {
+    // Wort legen: die Laute des Wortes plus ein, zwei Ablenker
+    const mixed = store.mode === "mixed";
+    const seq = W.gr.map((g, i) => mixed ? (i === 0 ? cap(g.toLowerCase()) : g.toLowerCase()) : g);
+    const spare = shuffle(store.known.filter(k => !W.gr.includes(k)))
+                   .slice(0, W.gr.length <= 3 ? 1 : 2)
+                   .map(k => mixed ? k.toLowerCase() : k);
+    t.stim = '<div class="big-emoji" role="img" aria-label="' + W.plain + '">' + W.e + "</div>";
+    t.build = { seq, chips: scramble([...seq, ...spare]), words: false };
+    t.say = W.plain + ". Leg das Wort " + W.plain + ".";
+    t.sayFull = t.say;
+  }
+  return t;
+}
+
+/* n verschiedene Einträge (nach key) aus einer Liste */
+function distinct(list, n, key) {
+  const out = [], seen = new Set();
+  for (const x of list) {
+    if (out.length >= n) break;
+    if (seen.has(key(x))) continue;
+    seen.add(key(x));
+    out.push(x);
+  }
+  return out;
+}
+
+/* ---------- Level 3: Sätze ---------- */
+function sentenceTask(type, S) {
+  if (type === "truth" && !pools.facts.length) type = "pic";
+  if (type !== "truth" && !pools.sentences.length) type = "truth";
+
+  // Sind alle Stimmt-das-Sätze schon dran gewesen, lieber ein Bild-Satz
+  const fresh = list => list.filter(x => !round.recent.includes("S:" + x.text));
+  if (!S && type === "truth" && !fresh(pools.facts).length && fresh(pools.sentences).length) type = "pic";
+
+  if (!S) {
+    if (type === "truth") S = pickWeighted(pools.facts, x => "S:" + x.text);
+    else {
+      // Erst die Satzart wählen, sonst gäbe es fast nur „… hat einen …“.
+      // Satzarten, die in dieser Runde schon ganz durch sind, kommen nicht mehr.
+      const unused = fresh(pools.sentences);
+      const kinds = [...new Set((unused.length ? unused : pools.sentences).map(s => s.kind))];
+      const kind = pick(kinds);
+      S = pickWeighted(pools.sentences.filter(s => s.kind === kind), x => "S:" + x.text);
+    }
+  }
+
+  const t = { type, item: S, key: "S:" + S.text, extra: S.text };
+
+  if (type === "truth") {
+    t.label = S.e;
+    t.stim = '<div class="sentence">' + sentenceHTML(S.text) + "</div>";
+    t.options = [
+      { html: "👍", correct: S.ok,  cls: "thumb yes", aria: "Stimmt" },
+      { html: "👎", correct: !S.ok, cls: "thumb no",  aria: "Stimmt nicht" }
+    ];
+    t.cols = 2;
+    t.extra = S.ok ? "Das stimmt." : "Das stimmt nicht.";
+    t.say = "Lies den Satz. Stimmt das?";
+  } else if (type === "pic") {
+    const p = picOf(S);
+    t.label = picHTML({ a: p.a, b: p.b });
+    t.stim = '<div class="sentence">' + sentenceHTML(S.text) + "</div>";
+    t.options = picChoices(S).map(c => ({ html: picHTML(c.p), correct: c.correct, cls: "thumb" }));
+    t.say = "Lies den Satz. Welches Bild passt dazu?";
+  } else {
+    const p = picOf(S);
+    t.label = picHTML({ a: p.a, b: p.b });
+    // Satzzeichen sind keine Kärtchen, sie stehen schon fest hinter ihrer Lücke.
+    const parts = splitSentence(S.text);
+    const seq = parts.map(x => shown(x.word));
+    t.stim = '<button class="clue" data-repeat aria-label="Bild zum Satz">' + picHTML(p) + "</button>";
+    t.build = { seq, marks: parts.map(x => x.mark), chips: scramble(seq), words: true };
+    t.say = "Leg den Satz. Das Bild hilft dir.";
+  }
+  // Der Satz selbst wird nur auf Wunsch vorgelesen – sonst müsste man nicht lesen.
+  t.sayFull = t.say + " Der Satz heisst: " + S.text;
+  return t;
+}
+
+/* Richtiges Bild plus zwei falsche, die sich in genau einem Teil unterscheiden */
+function picChoices(S) {
+  const p = picOf(S);
+  let wrong;
+  if (S.o) {
+    const fits = (x, y) => x.plain !== y.plain && x.e !== y.e && !clash(x, y);
+    const s2 = pick(SUBJECTS.map(noun).filter(x => fits(x, S.s)));
+    const o2 = pick(S.list.map(noun).filter(x => fits(x, S.o)));
+    wrong = [{ a: s2.e, b: p.b }, { a: p.a, b: o2.e }];
+  } else if (S.kind === "color") {
+    const c2 = pick(Object.keys(COLORS).filter(c => c !== S.c));
+    const n2 = WORD[pick(COLORED.filter(x => x !== S.n.plain))];
+    wrong = [{ a: p.a, tint: COLORS[c2] }, { a: n2.e, tint: p.tint }];
+  } else if (S.kind === "size") {
+    const n2 = WORD[pick(SIZED.filter(x => x !== S.n.plain && !clash(WORD[x], S.n)))];
+    wrong = [{ a: p.a, size: S.z === "gross" ? "klein" : "gross" }, { a: n2.e, size: S.z }];
+  } else {
+    const others = WORDS.filter(x => x !== S.n && x.e !== S.n.e && !clash(x, S.n));
+    const same = shuffle(others.filter(x => x.gr[0] === S.n.gr[0]));
+    wrong = distinct([...same.slice(0, 1), ...shuffle(others)], 2, x => x.e).map(x => ({ a: x.e }));
+  }
+  return shuffle([{ p, correct: true }, ...wrong.map(w => ({ p: w, correct: false }))]);
+}
+
+/* =========================================================
+   Aufgabe zeigen
+   ========================================================= */
+function renderTask() {
+  screen.innerHTML =
+    '<div class="task t-' + task.type + '">' +
+      '<div class="stim">' + task.stim + "</div>" +
+      '<div class="act"></div>' +
+    "</div>";
+  const act = screen.querySelector(".act");
+
+  if (task.options) {
+    const box = document.createElement("div");
+    box.className = "opts" + (task.wordOpts ? " words" : "");
+    box.style.setProperty("--cols", task.cols || task.options.length);
+    if (task.wordOpts) box.style.removeProperty("--cols");
+    task.options.forEach(o => {
+      const b = document.createElement("button");
+      b.className = "opt " + o.cls;
+      b.innerHTML = o.html;
+      if (o.aria) b.setAttribute("aria-label", o.aria);
+      b.onclick = () => choose(b, o);
+      o.el = b;
+      box.appendChild(b);
+    });
+    act.appendChild(box);
+  } else {
+    const bd = task.build;
+    bd.pos = 0;
+    bd.hinting = false;
+    act.innerHTML =
+      '<div class="slots' + (bd.words ? " words" : "") + '">' +
+        bd.seq.map((_, i) => '<span class="slot"></span>' +
+          (bd.marks && bd.marks[i] ? '<span class="mark">' + bd.marks[i] + "</span>" : "")).join("") +
+      "</div>" +
+      '<div class="chips' + (bd.words ? " words" : "") + '"></div>';
+    const chips = act.querySelector(".chips");
+    bd.chips.forEach(txt => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = txt;
+      b.onclick = () => place(b);
+      chips.appendChild(b);
+    });
+  }
+
+  // Wörter antippen = vorlesen; Ohr und Bild wiederholen die Ansage.
+  screen.querySelectorAll("[data-say]").forEach(el => {
+    el.onclick = () => {
+      el.classList.add("on");
+      speak(el.dataset.say).then(() => el.classList.remove("on"));
+    };
+  });
+  screen.querySelectorAll("[data-repeat]").forEach(el => {
+    el.onclick = () => speak(task.type === "order" ? task.sayFull : task.say);
+  });
+}
+
+/* =========================================================
+   Antworten
+   ========================================================= */
+function choose(btn, o) {
+  if (busy || btn.disabled) return;
+  if (o.correct) { solved(btn); return; }
+
+  miss(btn);
+  btn.disabled = true;
+  btn.classList.add("dim");
+
+  // Nach zwei Fehlversuchen (oder wenn nur noch eine Antwort übrig ist)
+  // zeigen wir die Lösung – das Kind tippt sie dann selber an.
+  const left = task.options.filter(x => !x.el.disabled);
+  if (task.errors >= 2 || left.length === 1) {
+    task.helped = true;
+    task.options.forEach(x => {
+      if (x.correct) x.el.classList.add("show-me");
+      else { x.el.disabled = true; x.el.classList.add("dim"); }
+    });
+    speak("Schau, das hier ist richtig.");
+  } else {
+    speak(pick(["Nochmal!", "Versuch es nochmal.", "Fast! Nochmal."]));
+  }
+}
+
+/* Kärtchen legen: das richtige kommt an seinen Platz, ein falsches wackelt */
+function place(chip) {
+  if (busy || chip.disabled) return;
+  const bd = task.build;
+  const want = bd.seq[bd.pos];
+
+  if (chip.textContent !== want) {
+    miss(chip);
+    if (task.errors >= 2 && !bd.hinting) {
+      bd.hinting = true;
+      task.helped = true;
+      speak("Schau, dieses Kärtchen kommt als Nächstes.");
+    } else {
+      speak(pick(["Nochmal!", "Das passt noch nicht."]));
+    }
+    markNextChip();
+    return;
+  }
+
+  const slot = screen.querySelectorAll(".slot")[bd.pos];
+  slot.textContent = want;
+  slot.classList.add("filled");
+  chip.disabled = true;
+  chip.classList.add("used");
+  chip.classList.remove("show-me");
+  bd.pos++;
+  beep(620 + bd.pos * 60, 0.07);
+
+  if (bd.pos === bd.seq.length) solved(screen.querySelector(".slots"));
+  else markNextChip();
+}
+
+function markNextChip() {
+  const bd = task.build;
+  if (!bd.hinting) return;
+  const chips = [...screen.querySelectorAll(".chip")];
+  chips.forEach(c => c.classList.remove("show-me"));
+  const next = chips.find(c => !c.disabled && c.textContent === bd.seq[bd.pos]);
+  if (next) next.classList.add("show-me");
+}
+
+function miss(el) {
+  task.errors++;
+  el.classList.remove("bad");
+  void el.offsetWidth;               // Animation neu starten
+  el.classList.add("bad");
+  beep(220, 0.16);
+
+  // Beim ersten Fehler: merken, später in der Runde nochmals fragen
+  if (task.errors === 1) {
+    store.weak[task.key] = Math.min(5, (store.weak[task.key] || 0) + 2);
+    saveStore();
+    if (round.n + 3 < ROUND && round.retry.length < 3 &&
+        !round.retry.some(r => r.item === task.item)) {
+      round.retry.push({ due: round.n + 3, type: task.type, item: task.item });
+    }
+  }
+}
+
+async function solved(el) {
+  busy = true;
+  const my = flow;
+  const res = task.errors === 0 ? "good" : "help";
+
+  if (res === "good") {
+    store.know[task.key] = (store.know[task.key] || 0) + 1;
+    if (store.weak[task.key]) {
+      store.weak[task.key]--;
+      if (!store.weak[task.key]) delete store.weak[task.key];
+    }
+    saveStore();
+  }
+
+  round.results.push(res);
+  round.labels.push(task.label);
+  round.n++;
+
+  if (el.classList.contains("opt")) {
+    el.classList.remove("show-me");
+    el.classList.add("good");
+    task.options.forEach(x => { if (x.el !== el) x.el.classList.add("dim"); });
+  }
+  if (task.type === "truth") {
+    const stim = screen.querySelector(".stim");
+    stim.insertAdjacentHTML("beforeend",
+      '<div class="fact-pic" aria-hidden="true">' + task.item.e + " " + (task.item.ok ? "👍" : "👎") + "</div>");
+  }
+  burst(el);
+  beep(880, 0.1);
+  paintProgress();
+
+  const praise = res === "good" ? pick(PRAISE) : "Genau!";
+  await Promise.all([speak(praise + " " + task.extra), sleep(1300)]);
+  if (my !== flow) return;
+  await sleep(400);
+  if (my !== flow) return;
+  nextTask();
+}
+
+/* =========================================================
+   Ton (kurze Töne)
+   ========================================================= */
+let audio = null;
+
+function beep(freq, dur) {
+  if (!store.sound) return;
+  try {
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "sine";
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.16, audio.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+    o.connect(g).connect(audio.destination);
+    o.start();
+    o.stop(audio.currentTime + dur + 0.02);
+  } catch (e) { /* ohne Ton weiterspielen */ }
+}
+
+function chime() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.16), i * 130));
+}
+
+/* ---------- Sternchen-Wirbel ---------- */
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function burst(el, count = 8) {
+  if (reduced || !el) return;
+  const r = el.getBoundingClientRect();
+  const box = document.createElement("div");
+  box.className = "burst";
+  box.style.left = (r.left + r.width / 2 + window.scrollX) + "px";
+  box.style.top  = (r.top + r.height / 2 + window.scrollY) + "px";
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement("span");
+    const a = (i / count) * 2 * Math.PI + Math.random() * .4;
+    const d = 70 + Math.random() * 50;
+    s.textContent = pick(PRAISE_EMOJI);
+    s.style.setProperty("--dx", Math.cos(a) * d + "px");
+    s.style.setProperty("--dy", Math.sin(a) * d + "px");
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 900);
+}
+
+function confettiAt(el) {
+  burst(el, 14);
+  setTimeout(() => { if (view === "end") burst(el, 10); }, 450);
+}
+
+/* =========================================================
+   Einstellungen (für Eltern)
+   ========================================================= */
+function paintLetterGrid() {
+  letterGrid.replaceChildren();
+  LETTERS.forEach(L => {
+    const lab = document.createElement("label");
+    lab.className = "lt";
+    lab.title = sayLetter(L);
+    const shownLetter = store.mode === "upper" ? L.k
+                      : L.k.length === 1 ? L.k + " " + L.k.toLowerCase()
+                      : cap(L.k.toLowerCase());
+    lab.innerHTML =
+      '<input type="checkbox" value="' + L.k + '"' + (store.known.includes(L.k) ? " checked" : "") + ">" +
+      '<span class="lt-box"><b>' + shownLetter + "</b><small>" + L.e + "</small></span>";
+    lab.querySelector("input").onchange = e => {
+      setKnown(e.target.checked ? [...store.known, L.k] : store.known.filter(k => k !== L.k));
+    };
+    letterGrid.appendChild(lab);
+  });
+}
+
+function setKnown(list) {
+  store.known = ORDER.filter(k => list.includes(k));
+  saveStore();
+  pools = poolsFor(knownSet());
+  [...letterGrid.querySelectorAll("input")].forEach(i => { i.checked = store.known.includes(i.value); });
+  paintCounts();
+}
+
+function paintCounts() {
+  const w = pools.words.length, s = sentenceCount(pools);
+  countsEl.innerHTML =
+    "Damit passen <b" + (w < MIN_WORDS ? ' class="low"' : "") + ">" + w + " Wörter</b> (Level 2) und " +
+    "<b" + (s < MIN_SENTENCES ? ' class="low"' : "") + ">" + s + " Sätze</b> (Level 3)." +
+    (w < MIN_WORDS || s < MIN_SENTENCES ? " Rot heisst: noch zu wenige zum Spielen." : "");
+}
+
+function paintVoiceNote() {
+  voiceNote.textContent = !hasSpeech
+    ? "⚠️ Dieser Browser kann nicht vorlesen. Ohne Sprachausgabe fehlen die Hör-Aufgaben."
+    : voice ? "Vorlesestimme: " + voice.name + " (" + voice.lang + ")."
+    : "Es wurde keine deutsche Stimme gefunden – vielleicht liest der Browser mit einem fremden Akzent vor.";
+}
+
+function openSettings() {
+  flow++;                                   // laufende Übergänge anhalten
+  if (hasSpeech) speechSynthesis.cancel();
+  settings.querySelectorAll('input[name="mode"]').forEach(r => { r.checked = r.value === store.mode; });
+  syllToggle.checked = store.syll;
+  soundToggle.checked = store.sound;
+  paintLetterGrid();
+  paintCounts();
+  paintVoiceNote();
+  settings.showModal();
+}
+
+settings.querySelectorAll('input[name="mode"]').forEach(r => {
+  r.onchange = () => { store.mode = r.value; saveStore(); paintLetterGrid(); };
+});
+
+syllToggle.onchange  = () => { store.syll = syllToggle.checked; saveStore(); };
+soundToggle.onchange = () => { store.sound = soundToggle.checked; saveStore(); };
+
+document.getElementById("moreBtn").onclick = () => {
+  const next = ORDER.find(k => !store.known.includes(k));
+  if (next) setKnown([...store.known, next]);
+};
+document.getElementById("lessBtn").onclick = () => setKnown(store.known.slice(0, -1));
+document.getElementById("allBtn").onclick  = () => setKnown(ORDER);
+document.getElementById("noneBtn").onclick = () => setKnown([]);
+
+document.getElementById("resetBtn").onclick = () => {
+  if (!confirm("Alle Sterne und den Lernstand (welche Buchstaben und Wörter schwierig waren) löschen?")) return;
+  store.best = {};
+  store.weak = {};
+  store.know = {};
+  saveStore();
+  paintLevels();
+};
+
+// Nach dem Schliessen gilt alles Neue: die Runde beginnt von vorn.
+settings.addEventListener("close", showStart);
+
+document.getElementById("settingsBtn").onclick = e => { e.currentTarget.blur(); openSettings(); };
+
+/* =========================================================
+   Bedienung
+   ========================================================= */
+speakBtn.onclick = () => {
+  speakBtn.blur();
+  if (task) speak(task.sayFull || task.say);
+};
+
+document.addEventListener("keydown", e => {
+  if (settings.open || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key >= "1" && e.key <= "9") {
+    const btns = [...screen.querySelectorAll(".opt, .chip")];
+    const b = btns[Number(e.key) - 1];
+    if (b) { b.click(); e.preventDefault(); }
+  } else if (e.key === " ") {
+    if (task) speakBtn.click();
+    e.preventDefault();
+  } else if (e.key === "Enter") {
+    const b = document.getElementById("playBtn") || document.getElementById("againBtn");
+    if (b && view !== "task") { b.click(); e.preventDefault(); }
+  }
+});
+
+showStart();
+</script>
+</body>
+</html>
