@@ -141,6 +141,55 @@
     </li>
 
     <li>
+      <a class="card tile" href="mastermind.html">
+        <span class="tile-art">
+          <svg viewBox="0 0 400 300" role="img" aria-label="Farbige Spielsteine mit Auswertung">
+            <defs>
+              <radialGradient id="tStein" cx="34%" cy="26%" r="78%">
+                <stop offset="0%"   stop-color="#fff" stop-opacity=".92"/>
+                <stop offset="32%"  stop-color="#fff" stop-opacity=".22"/>
+                <stop offset="60%"  stop-color="#fff" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <rect x="8" y="18" width="384" height="264" rx="34"
+                  fill="#f7fbff" stroke="#c3cedb" stroke-width="8"/>
+
+            <!-- abgedeckter Geheimcode -->
+            <rect x="44" y="44" width="312" height="56" rx="20" fill="#4361ee"/>
+            <text x="200" y="82" font-size="28" text-anchor="middle" fill="#fff">🔒</text>
+
+            <!-- geratene Reihe -->
+            <g>
+              <circle cx="95"  cy="168" r="30" fill="#e63946"/>
+              <circle cx="165" cy="168" r="30" fill="#f9c74f"/>
+              <circle cx="235" cy="168" r="30" fill="#2a9d8f"/>
+              <circle cx="305" cy="168" r="30" fill="#9b5de5"/>
+              <g fill="url(#tStein)">
+                <circle cx="95"  cy="168" r="30"/>
+                <circle cx="165" cy="168" r="30"/>
+                <circle cx="235" cy="168" r="30"/>
+                <circle cx="305" cy="168" r="30"/>
+              </g>
+            </g>
+
+            <!-- Auswertung -->
+            <g>
+              <rect x="156" y="212" width="88" height="52" rx="18" fill="#dde5f0"/>
+              <circle cx="179" cy="230" r="10" fill="#e4572e"/>
+              <circle cx="221" cy="230" r="10" fill="#33404d"/>
+              <circle cx="179" cy="248" r="10" fill="#adbccf"/>
+              <circle cx="221" cy="248" r="10" fill="#adbccf"/>
+            </g>
+          </svg>
+        </span>
+        <h2>Mastermind</h2>
+        <p>Den geheimen Farbcode mit klugen Fragen knacken.</p>
+        <span class="go">Los geht’s →</span>
+      </a>
+    </li>
+
+    <li>
       <div class="card tile soon">
         <span class="emoji" role="img" aria-label="Zahlen">🔢</span>
         <h2>Rechnen</h2>
