@@ -1,0 +1,11 @@
+{
+  "name": "kids-tools",
+  "private": true,
+  "description": "Werkzeuge für die Lernseiten, z.B. die KI-Sprachaufnahmen für englisch.html",
+  "scripts": {
+    "audio": "node make-audio.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

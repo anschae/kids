@@ -1,2 +1,5 @@
 .DS_Store
 
+# Werkzeuge: Schlüssel und Pakete bleiben lokal
+tools/tts-config.json
+tools/node_modules/

@@ -1,0 +1,10 @@
+{
+  "key": "HIER-DEN-SCHLÜSSEL-DER-SPEECH-RESSOURCE",
+  "region": "westeurope",
+  "voices": {
+    "en":   { "voice": "en-GB-SoniaNeural" },
+    "bear": { "voice": "en-GB-RyanNeural" },
+    "kid":  { "voice": "en-GB-MaisieNeural" },
+    "de":   { "voice": "de-CH-LeniNeural" }
+  }
+}

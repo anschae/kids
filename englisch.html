@@ -1222,6 +1222,12 @@
     </fieldset>
 
     <fieldset>
+      <legend>KI-Stimmen (Aufnahmen)</legend>
+      <label class="check"><input type="checkbox" id="audioToggle"> Aufnahmen verwenden – klingt viel natürlicher</label>
+      <p class="note" id="audioNote"></p>
+    </fieldset>
+
+    <fieldset>
       <legend>Englische Stimme</legend>
       <div class="voice-row">
         <select id="voiceEn" aria-label="Englische Stimme"></select>
@@ -1260,6 +1266,8 @@
   </form>
 </dialog>
 
+<!-- KI-Sprachaufnahmen (erzeugt mit tools/make-audio.js); fehlt die Datei, liest die Browserstimme -->
+<script src="audio/manifest.js" onerror="window.AUDIO_FILES = null"></script>
 <script>
 /* =========================================================
    Englisch lernen
@@ -2030,7 +2038,8 @@ if (store.v !== STORE_V) store = { v: STORE_V };
 if (!store.profile || typeof store.profile !== "object") store.profile = { name: "", age: 0, country: "" };
 if (typeof store.asked !== "boolean") store.asked = false;      // Profil-Fragen schon gezeigt?
 if (typeof store.sound !== "boolean") store.sound = true;
-if (typeof store.rec !== "boolean") store.rec = false;            // Spracherkennung, standardmässig aus
+if (typeof store.rec !== "boolean") store.rec = false;
+if (typeof store.useAudio !== "boolean") store.useAudio = true;   // KI-Aufnahmen, falls vorhanden            // Spracherkennung, standardmässig aus
 if (typeof store.showText !== "boolean") store.showText = false;
 if (typeof store.showDe !== "boolean") store.showDe = false;
 if (!["slow", "normal", "fast"].includes(store.speed)) store.speed = "normal";
@@ -2063,11 +2072,12 @@ let utterance = null;      // festhalten, sonst räumt Chrome sie vorzeitig weg
 let sayGen = 0;
 
 const SPEED = { slow: .8, normal: 1, fast: 1.15 };
-const BEAR = { pitch: .7, rate: .8 };
-const KID = { pitch: 1.35, rate: .8 };
+/* role: wer spricht – bestimmt die Stimme der Aufnahme (Erzählerin, Teddy, Kind, Deutsch) */
+const BEAR = { pitch: .7, rate: .8, role: "bear" };
+const KID = { pitch: 1.35, rate: .8, role: "kid" };
 
-function EN(t, o = {}) { return { t, lang: "en", rate: o.rate || .85, pitch: o.pitch || 1 }; }
-function DE(t) { return { t, lang: "de", rate: .95, pitch: 1 }; }
+function EN(t, o = {}) { return { t, lang: "en", role: o.role || "en", rate: o.rate || .85, pitch: o.pitch || 1 }; }
+function DE(t) { return { t, lang: "de", role: "de", rate: .95, pitch: 1 }; }
 
 /* Die Browser bieten viele Stimmen an und nehmen von sich aus gern
    die schlechteste. Darum bekommt jede Stimme Punkte. */
@@ -2166,16 +2176,106 @@ function utter(p) {
   });
 }
 
+/* ---------- KI-Aufnahmen ----------
+   Für alles, was feststeht, gibt es (falls erzeugt) eine Aufnahme in audio/.
+   Der Dateiname ist eine Prüfsumme aus Sprecher und Text – ändert sich ein
+   Text, braucht es eine neue Aufnahme. Was fehlt (z.B. Sätze mit dem Namen
+   des Kindes), liest die Browserstimme. */
+const AUDIO = window.AUDIO_FILES || null;
+const player = new Audio();
+let stopPlaying = null;
+
+function audioKey(role, t) {
+  let h = 0x811c9dc5;                        // FNV-1a, 32 Bit
+  const s = role + "|" + t;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+function audioFor(p) {
+  if (!AUDIO || !store.useAudio) return null;
+  const f = AUDIO[audioKey(p.role, p.t)];
+  return f ? "audio/" + f : null;
+}
+
+/* Spielt eine Datei; erfüllt mit false, wenn es nicht klappt */
+function playFile(src, rate) {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = ok => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      if (stopPlaying === finish) stopPlaying = null;
+      resolve(ok);
+    };
+    stopPlaying = finish;
+    player.onended = () => finish(true);
+    player.onerror = () => finish(false);
+    player.src = src;
+    player.defaultPlaybackRate = player.playbackRate = rate;
+    const guard = setTimeout(() => finish(true), 15000);
+    const pr = player.play();
+    if (pr) pr.catch(() => finish(false));
+  });
+}
+
+function stopAudio() {
+  try { player.pause(); } catch (e) { /* egal */ }
+  if (stopPlaying) stopPlaying(true);
+}
+
+/* iPad: Ton gibt es erst nach dem ersten Antippen. Ein stummer Ton beim
+   ersten Tippen schaltet das Abspielen für später frei. */
+function silentWav() {
+  const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVEfmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  b.fill(128, 44);
+  let bin = "";
+  b.forEach(x => { bin += String.fromCharCode(x); });
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
+if (AUDIO) {
+  const unlock = () => {
+    if (player.src) return;
+    player.src = silentWav();
+    const pr = player.play();
+    if (pr) pr.catch(() => {});
+  };
+  document.addEventListener("pointerdown", unlock, { once: true, capture: true });
+  document.addEventListener("keydown", unlock, { once: true, capture: true });
+}
+
+/* Ein Teil: Aufnahme, wenn es eine gibt – sonst die Browserstimme */
+async function speakPart(p) {
+  const src = audioFor(p);
+  if (src) {
+    // 🐢 langsam: Aufnahme langsamer abspielen (die Tonhöhe bleibt)
+    const rate = SPEED[store.speed] * (p.rate < .7 ? .75 : 1);
+    if (await playFile(src, rate)) return;
+  }
+  if (hasSpeech) await utter(p);
+}
+
 /* Teile: EN(…), DE(…) oder Funktionen (z.B. ein Klang), auch verschachtelt */
 function say(...parts) {
   const my = ++sayGen;
+  stopAudio();
   if (hasSpeech) speechSynthesis.cancel();
   speakBtn.classList.add("talking");
   return (async () => {
     for (const p of parts.flat(2)) {
       if (my !== sayGen) return;
       if (typeof p === "function") await p();
-      else if (p && p.t && hasSpeech) await utter(p);
+      else if (p && p.t) await speakPart(p);
     }
     if (my === sayGen) speakBtn.classList.remove("talking");
   })();
@@ -2183,8 +2283,60 @@ function say(...parts) {
 
 function hush() {
   sayGen++;
+  stopAudio();
   if (hasSpeech) speechSynthesis.cancel();
   speakBtn.classList.remove("talking");
+}
+
+/* Alle Texte, die das Spiel sprechen kann – ausser denen mit dem Namen
+   des Kindes. tools/make-audio.js erzeugt daraus die Aufnahmen. */
+function audioTexts() {
+  const out = new Map();
+  const add = (role, t) => { if (t && !out.has(audioKey(role, t))) out.set(audioKey(role, t), { k: audioKey(role, t), role, t }); };
+  const src = [...document.scripts].map(x => x.textContent).join("\n");
+
+  // feste Texte im Code (EN- und DE-Aufrufe mit festem Text) und die Erklärungen (intro)
+  for (const m of src.matchAll(/\b(EN|DE)\("((?:[^"\\]|\\.)*)"(\s*,\s*(BEAR|KID))?\s*[,)]/g)) {
+    add(m[1] === "DE" ? "de" : m[4] ? m[4].toLowerCase() : "en", JSON.parse('"' + m[2] + '"'));
+  }
+  for (const m of src.matchAll(/intro:\s*(?:recOn\(\)\s*\?\s*)?"([^"]+)"(?:\s*:\s*"([^"]+)")?/g)) {
+    add("de", m[1]);
+    add("de", m[2]);
+  }
+  [1, 2, 3].forEach(n => add("de", "Geschafft! Du hast " + (n === 1 ? "einen Stern" : n + " Sterne") + " bekommen."));
+  add("en", "Great job!");
+
+  // Wörter, Themen, Profil
+  TOPICS.forEach(t => { add("en", t.en); t.items.forEach(x => add("en", x.en)); });
+  SITS.forEach(t => add("en", t.en));
+  Object.values(AREAS).forEach(a => add("en", a.en));
+  NUM_EN.forEach(w => add("en", w));
+  AGES.forEach(a => add("en", "I'm " + a.en + " years old."));
+  COUNTRIES.forEach(c => { add("en", c.say || c.en); add("en", "I live in " + c.en + "."); });
+
+  // Simon says
+  PARTS.forEach(x => { add("en", "Simon says: touch your " + x.en + "!"); add("en", cap(x.en) + "!"); });
+  MOVES.forEach(mv => add("en", "Simon says: " + mv.en.charAt(0).toLowerCase() + mv.en.slice(1)));
+  PRAISE.forEach(w => add("en", w));
+  REACT.forEach(w => add("bear", w));
+
+  // Gespräche: jede Frage mit jedem Wert, jede Antwort, jeder Satzanfang
+  SITS.forEach(sit => sit.pairs.forEach(p => {
+    if (p.yn) {
+      p.subj().forEach(sb => add("bear", val(p.q, sb)));
+      add("kid", p.yes);
+      add("kid", p.no);
+      return;
+    }
+    const xs = p.list ? p.list() : [p.me ? null : undefined];
+    xs.forEach(x => {
+      add("bear", val(p.q, x));
+      if (p.me && !p.list) return;              // Antwort mit dem Namen: Browserstimme
+      add("kid", p.a(x));
+      if (p.pre != null && val(p.pre, x)) add("kid", val(p.pre, x) + " …");
+    });
+  }));
+  return [...out.values()];
 }
 
 /* =========================================================
@@ -3693,6 +3845,7 @@ function openSettings() {
   paintTopicChecks();
   $("recResult").textContent = "";
   paintRec();
+  paintAudio();
   // Stimmen kommen manchmal erst spät – beim Öffnen frisch einlesen
   if (hasSpeech) pickVoices();
   else { paintVoiceSelect("en", []); paintVoiceSelect("de", []); paintVoiceNotes(); }
@@ -3747,6 +3900,17 @@ recToggle.onchange = () => {
 };
 
 $("recTest").onclick = recTest;
+
+function paintAudio() {
+  const n = AUDIO ? Object.keys(AUDIO).length : 0;
+  $("audioToggle").disabled = !n;
+  $("audioToggle").checked = !!n && store.useAudio;
+  $("audioNote").textContent = !n
+    ? "Es sind keine Aufnahmen vorhanden, darum liest die Browserstimme. Wie man sie erzeugt, steht in tools/make-audio.js."
+    : n + " Aufnahmen vorhanden. Was fehlt – etwa Sätze mit dem Namen Ihres Kindes – liest die Browserstimme unten.";
+}
+
+$("audioToggle").onchange = e => { store.useAudio = e.target.checked; saveStore(); say(EN("Hello! My name is Teddy.", BEAR)); };
 
 $("soundToggle").onchange = e => { store.sound = e.target.checked; saveStore(); };
 $("textToggle").onchange = e => { store.showText = e.target.checked; saveStore(); };
