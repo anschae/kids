@@ -813,6 +813,41 @@
 
   .check input { width: 22px; height: 22px; cursor: pointer; }
 
+  .voice-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .voice-row select {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 15px;
+    padding: 7px 10px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .voice-row button {
+    font: inherit;
+    font-size: 15px;
+    padding: 7px 14px;
+    border: 2px solid var(--ring);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ring);
+    cursor: pointer;
+  }
+
+  .voice-help summary { cursor: pointer; color: var(--ring); }
+  .voice-help ul { margin: 6px 0 0; padding-left: 20px; }
+  .voice-help li { margin-bottom: 4px; }
+  .voice-help p { margin: 6px 0 0; }
+
+  .note.warn { color: var(--hour); }
+
   .set-foot {
     display: flex;
     flex-wrap: wrap;
@@ -949,7 +984,33 @@
       <legend>Anzeige und Ton</legend>
       <label class="check"><input type="checkbox" id="syllToggle"> Silben farbig mit Bögen zeigen (Wörter-Level)</label>
       <label class="check"><input type="checkbox" id="soundToggle"> Spielgeräusche</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Vorlesestimme</legend>
+      <div class="voice-row">
+        <select id="voiceSelect" aria-label="Vorlesestimme"></select>
+        <button type="button" id="voiceTest">▶ Probe</button>
+      </div>
       <p class="note" id="voiceNote"></p>
+      <details class="note voice-help">
+        <summary>Klingt die Stimme abgehackt? So gibt es eine bessere.</summary>
+        <p>Die vorinstallierten Stimmen sind oft sehr klein und sprechen lange Vokale zu kurz
+          („Fe“ statt „Fee“). Natürlicher klingen Stimmen mit dem Zusatz <b>Premium</b>,
+          <b>Erweitert</b>/<b>Enhanced</b> oder <b>Natural</b> – das Spiel nimmt sie automatisch,
+          sobald sie da sind.</p>
+        <ul>
+          <li><b>iPad/iPhone:</b> Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen →
+            Deutsch → z.B. „Anna“ oder „Petra“ in der Premium- oder erweiterten Fassung laden.</li>
+          <li><b>Mac:</b> Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte →
+            Systemstimme → Stimmen verwalten → Deutsch → Premium-Stimme laden.
+            Danach den Browser neu starten.</li>
+          <li><b>Windows:</b> Im Browser Edge gibt es sehr natürliche Stimmen, auch Schweizer
+            (Leni, Jan) – einfach das Spiel in Edge öffnen.</li>
+          <li><b>Chrome:</b> „Google Deutsch“ klingt meist besser als die Systemstimme
+            (braucht Internet).</li>
+        </ul>
+      </details>
     </fieldset>
 
     <div class="set-foot">
@@ -1364,6 +1425,7 @@ if (!Array.isArray(store.known)) store.known = DEFAULT_KNOWN.slice();
 store.known = ORDER.filter(k => store.known.includes(k));
 if (typeof store.syll !== "boolean") store.syll = true;
 if (typeof store.sound !== "boolean") store.sound = true;
+if (typeof store.voice !== "string") store.voice = "";   // "" = beste Stimme automatisch
 if (!store.best) store.best = {};
 if (!store.weak) store.weak = {};     // Schlüssel → wie oft zuletzt falsch (wird wiederholt)
 if (!store.know) store.know = {};     // Schlüssel → wie oft auf Anhieb richtig
@@ -1512,11 +1574,41 @@ const hasSpeech = "speechSynthesis" in window;
 let voice = null;
 let utterance = null;      // festhalten, sonst räumt Chrome sie vorzeitig weg
 
+/* Die Browser bieten oft viele deutsche Stimmen an – und nehmen von sich aus
+   gern die schlechteste. Die kleinen Standardstimmen („compact“) und die
+   Roboterstimmen (Eloquence: Eddy, Flo, Grandma …) sprechen lange Vokale viel
+   zu kurz, aus „Fee“ wird fast „Fe“. Darum bekommt jede Stimme Punkte:
+   je natürlicher, desto mehr. Bei gleicher Güte gewinnt die Schweizer Stimme. */
+const ROBOT_VOICE = /eloquence|\b(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i;
+
+function voiceScore(v) {
+  const id = v.name + " " + v.voiceURI;
+  let s = 10;                                        // gewöhnliche Systemstimme
+  if (/premium/i.test(id))                s = 50;
+  else if (/natural|neural/i.test(id))    s = 45;    // Edge, Windows
+  else if (/enhanced|erweitert/i.test(id)) s = 40;   // Apple
+  else if (/google/i.test(id))            s = 30;    // Chrome, Android
+  else if (ROBOT_VOICE.test(id))          s = -20;
+  else if (/compact/i.test(id))           s = 0;
+  if (/^de[-_]CH/i.test(v.lang)) s += 5;
+  return s;
+}
+
+const GOOD_VOICE = 30;      // ab hier klingt eine Stimme ordentlich
+
+function voiceId(v) { return v.voiceURI || v.name; }
+
+function germanVoices() {
+  return speechSynthesis.getVoices()
+    .filter(v => /^de([-_]|$)/i.test(v.lang))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
+/* Die Eltern können in den Einstellungen selber wählen; sonst die beste. */
 function pickVoice() {
-  const de = speechSynthesis.getVoices().filter(v => /^de([-_]|$)/i.test(v.lang));
-  voice = de.find(v => /^de[-_]CH/i.test(v.lang)) ||
-          de.find(v => /^de[-_]DE/i.test(v.lang)) ||
-          de[0] || null;
+  const de = germanVoices();
+  voice = de.find(v => voiceId(v) === store.voice) || de[0] || null;
+  paintVoiceSelect(de);
   paintVoiceNote();
 }
 
@@ -1566,6 +1658,7 @@ const countsEl    = document.getElementById("counts");
 const syllToggle  = document.getElementById("syllToggle");
 const soundToggle = document.getElementById("soundToggle");
 const voiceNote   = document.getElementById("voiceNote");
+const voiceSelect = document.getElementById("voiceSelect");
 
 let level = 0;
 let flow = 0;          // jeder Neustart erhöht flow – alte Zeitgeber laufen dann ins Leere
@@ -2258,11 +2351,32 @@ function paintCounts() {
     (w < MIN_WORDS || s < MIN_SENTENCES ? " Rot heisst: noch zu wenige zum Spielen." : "");
 }
 
+function paintVoiceSelect(de) {
+  voiceSelect.replaceChildren();
+  voiceSelect.disabled = !de.length;
+  const auto = document.createElement("option");
+  auto.value = "";
+  auto.textContent = de.length ? "Automatisch: " + de[0].name : "keine deutsche Stimme";
+  voiceSelect.appendChild(auto);
+  de.forEach(v => {
+    const o = document.createElement("option");
+    o.value = voiceId(v);
+    o.textContent = v.name + " (" + v.lang.replace("_", "-") + ")" +
+                    (voiceScore(v) >= GOOD_VOICE ? " ⭐" : voiceScore(v) < 0 ? " – Roboter" : "");
+    voiceSelect.appendChild(o);
+  });
+  voiceSelect.value = de.some(v => voiceId(v) === store.voice) ? store.voice : "";
+}
+
 function paintVoiceNote() {
+  const weak = voice && voiceScore(voice) < GOOD_VOICE;
+  voiceNote.classList.toggle("warn", !hasSpeech || !voice || weak);
   voiceNote.textContent = !hasSpeech
     ? "⚠️ Dieser Browser kann nicht vorlesen. Ohne Sprachausgabe fehlen die Hör-Aufgaben."
-    : voice ? "Vorlesestimme: " + voice.name + " (" + voice.lang + ")."
-    : "Es wurde keine deutsche Stimme gefunden – vielleicht liest der Browser mit einem fremden Akzent vor.";
+    : !voice ? "⚠️ Es wurde keine deutsche Stimme gefunden – vielleicht liest der Browser mit einem fremden Akzent vor."
+    : weak ? "Diese Stimme spricht lange Vokale oft zu kurz. Mit ⭐ markierte Stimmen klingen natürlicher – " +
+             "ist keine dabei, lässt sich eine installieren (siehe unten)."
+    : "⭐ Diese Stimme klingt natürlich.";
 }
 
 function openSettings() {
@@ -2273,7 +2387,9 @@ function openSettings() {
   soundToggle.checked = store.sound;
   paintLetterGrid();
   paintCounts();
-  paintVoiceNote();
+  // Stimmen kommen manchmal erst spät – beim Öffnen frisch einlesen
+  if (hasSpeech) pickVoice();
+  else { paintVoiceSelect([]); paintVoiceNote(); }
   settings.showModal();
 }
 
@@ -2283,6 +2399,15 @@ settings.querySelectorAll('input[name="mode"]').forEach(r => {
 
 syllToggle.onchange  = () => { store.syll = syllToggle.checked; saveStore(); };
 soundToggle.onchange = () => { store.sound = soundToggle.checked; saveStore(); };
+
+voiceSelect.onchange = () => {
+  store.voice = voiceSelect.value;
+  saveStore();
+  pickVoice();
+  speak("Die Fee hat ein Schaf.");
+};
+
+document.getElementById("voiceTest").onclick = () => speak("Die Fee hat ein Schaf. Fee. Schaf. M wie Maus.");
 
 document.getElementById("moreBtn").onclick = () => {
   const next = ORDER.find(k => !store.known.includes(k));

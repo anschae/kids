@@ -1,0 +1,3826 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Englisch lernen</title>
+<meta name="description" content="Erste englische Wörter und kleine Gespräche – mit Bildern und Sprachausgabe, auch für Kinder, die noch nicht lesen können.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<style>
+  body {
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .top-nav {
+    width: 100%;
+    max-width: 820px;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  button, label, .hint {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  button { touch-action: manipulation; }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 6vw, 44px);
+    text-align: center;
+    color: var(--ring);
+  }
+
+  /* Der Eltern-Knopf ist bewusst unauffällig – er soll Kinder nicht locken. */
+  .parent-btn {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 14px;
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .7);
+    color: var(--soft);
+    cursor: pointer;
+  }
+
+  @media (hover: hover) {
+    .parent-btn:hover { border-color: var(--ring); color: var(--ring); }
+  }
+
+  /* Profil-Knopf: zeigt, wer gerade spielt */
+  .me-btn {
+    font: inherit;
+    font-size: clamp(17px, 3.6vw, 21px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 18px;
+    border: 3px solid var(--minute);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--minute-dark);
+    cursor: pointer;
+  }
+
+  .me-btn .flag { width: 33px; height: 22px; }
+
+  /* ---------- Spielfeld ---------- */
+  .game {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+  }
+
+  .back {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+    line-height: 1;
+    border: 3px solid var(--line);
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .back:active { transform: scale(.94); }
+
+  /* Lautsprecher: immer am gleichen Ort, immer gross */
+  .speaker {
+    flex: none;
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+    line-height: 1;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 5px 0 var(--accent-dark);
+    cursor: pointer;
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+
+  .speaker:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 var(--accent-dark);
+  }
+
+  .speaker.talking { animation: talk .9s ease-in-out infinite; }
+
+  @keyframes talk {
+    50% { transform: scale(1.08); }
+  }
+
+  .speaker[hidden], .back[hidden] { display: block; visibility: hidden; }
+  .topbar[hidden] { display: none; }
+
+  /* Fortschritt: ein Feld pro Aufgabe */
+  .progress {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--n, 10), 1fr);
+    gap: 5px;
+  }
+
+  .progress i {
+    height: 16px;
+    border-radius: 8px;
+    background: #e3eaf3;
+    transition: background .3s ease, transform .3s ease;
+  }
+
+  .progress i.now  { background: #c9d6ff; transform: scaleY(1.25); }
+  .progress i.good { background: var(--minute); }
+  .progress i.help { background: var(--accent); }
+
+  .screen {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+    animation: slide-in .3s ease-out;
+  }
+
+  /* nur senkrecht – waagrecht gäbe auf dem Handy kurz einen Scrollbalken */
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(14px); }
+  }
+
+  /* ---------- Bilder ----------
+     Alles, was ein Ding zeigt (Emoji, Farbe, Zahl, Flagge, Zeichnung),
+     steckt in .pic und richtet sich nach dessen Schriftgrösse. */
+  .pic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .08em;
+    font-size: clamp(46px, 12vw, 66px);
+    line-height: 1.05;
+  }
+
+  .em { display: inline-block; }
+
+  .dot {
+    display: inline-block;
+    width: .95em;
+    height: .95em;
+    border-radius: 50%;
+    background: var(--c);
+    border: .05em solid rgba(51, 64, 77, .2);
+  }
+
+  .num {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .06em;
+  }
+
+  .num b { font-size: .8em; line-height: 1; color: var(--ring); }
+
+  .num i {
+    display: grid;
+    grid-template-columns: repeat(5, .14em);
+    gap: .05em;
+    justify-content: center;
+  }
+
+  .num i span {
+    width: .14em;
+    height: .14em;
+    border-radius: 50%;
+    background: var(--hour);
+  }
+
+  .flag {
+    display: inline-block;
+    width: 1.35em;
+    height: .9em;
+    border-radius: .06em;
+  }
+
+  .svgpic svg { display: block; width: 1em; height: 1em; }
+
+  .me-pic { display: inline-flex; flex-direction: column; align-items: center; }
+  .me-pic b { font-size: .32em; line-height: 1.2; color: var(--ink); }
+
+  .lbl { display: block; font-size: clamp(16px, 3.6vw, 20px); color: var(--ink); line-height: 1.2; }
+  .de  { display: block; font-size: clamp(13px, 3vw, 15px); color: var(--soft); line-height: 1.2; }
+
+  /* ---------- Profil ---------- */
+  .wiz-icon { font-size: clamp(70px, 18vw, 100px); line-height: 1.1; }
+
+  .name-in {
+    font: inherit;
+    font-size: clamp(30px, 8vw, 42px);
+    width: min(100%, 380px);
+    padding: 8px 16px;
+    text-align: center;
+    border: 4px solid var(--ring);
+    border-radius: 22px;
+    color: var(--ink);
+    background: #fff;
+  }
+
+  .age-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .flag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .pick-btn {
+    font: inherit;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 4px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 5px 0 #dbe3ee;
+    cursor: pointer;
+  }
+
+  .pick-btn .pic { font-size: clamp(40px, 10vw, 54px); }
+  .flag-grid .pick-btn .pic { font-size: clamp(46px, 11vw, 58px); }
+  .pick-btn small { font-size: 13px; color: var(--soft); }
+
+  .pick-btn[aria-pressed="true"] {
+    border-color: var(--minute);
+    background: #e3f5f1;
+    animation: pop .35s ease;
+  }
+
+  .wiz-btns {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* ---------- Start: Wörter oder Sätze ---------- */
+  .hello-line { margin: 0; font-size: clamp(22px, 5vw, 30px); color: var(--ring); }
+
+  .areas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .area-btn, .tile-btn, .mode-btn {
+    font: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 4px solid var(--ring);
+    border-radius: 26px;
+    background: #fff;
+    color: var(--ring);
+    box-shadow: 0 7px 0 rgba(67, 97, 238, .25);
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+
+  .area-btn:active, .tile-btn:active, .mode-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 3px 0 rgba(67, 97, 238, .25);
+  }
+
+  @media (hover: hover) {
+    .area-btn:hover, .tile-btn:hover, .mode-btn:hover { transform: translateY(-3px); }
+  }
+
+  .area-btn { padding: 22px 10px 16px; }
+  .area-btn .ar-icon { font-size: clamp(70px, 18vw, 100px); line-height: 1.1; }
+  .area-btn .ar-name { font-size: clamp(20px, 4.6vw, 26px); font-weight: bold; }
+
+  /* ---------- Themen ---------- */
+  .tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+
+  .tile-btn { padding: 10px 4px 8px; border-width: 3px; border-radius: 22px; }
+  .tile-btn .t-icon { font-size: clamp(42px, 11vw, 56px); line-height: 1.15; }
+  .tile-btn .t-name { font-size: clamp(14px, 3vw, 16px); color: var(--ink); }
+
+  .lv-stars { font-size: clamp(14px, 3vw, 18px); letter-spacing: 1px; line-height: 1.2; }
+
+  /* nicht erreichte Sterne: grau statt gelb */
+  .off {
+    filter: grayscale(1);
+    opacity: .3;
+  }
+
+  /* ---------- Spielarten ---------- */
+  .topic-head { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .topic-head .t-icon { font-size: clamp(64px, 16vw, 90px); line-height: 1.1; }
+
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .mode-btn { padding: 14px 6px 10px; }
+  .mode-btn .m-icon { font-size: clamp(46px, 12vw, 62px); line-height: 1.1; }
+  .mode-btn .m-name { font-size: clamp(15px, 3.4vw, 18px); color: var(--ink); }
+
+  .parent-note {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--soft);
+    max-width: 520px;
+  }
+
+  .parent-note b { color: var(--ink); }
+
+  /* ---------- Aufgabe ---------- */
+  .task {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    animation: slide-in .3s ease-out;
+  }
+
+  .stim {
+    width: 100%;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .act {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Hör-Aufgabe: grosses Ohr, antippen wiederholt die Ansage */
+  .listen {
+    font: inherit;
+    font-size: clamp(80px, 22vw, 120px);
+    line-height: 1.1;
+    padding: 6px 24px;
+    border: none;
+    border-radius: 30px;
+    background: #fff4e8;
+    cursor: pointer;
+  }
+
+  .listen:active { transform: scale(.97); }
+
+  /* ---------- Antwort-Knöpfe ---------- */
+  .opts {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .opt {
+    position: relative;
+    font: inherit;
+    min-height: 110px;
+    padding: 10px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 4px solid var(--line);
+    border-radius: 24px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 6px 0 #dbe3ee;
+    cursor: pointer;
+    transition: transform .1s ease, box-shadow .1s ease, border-color .15s ease,
+                background .15s ease, opacity .2s ease;
+  }
+
+  @media (hover: hover) {
+    .opt:hover:not([disabled]) { border-color: var(--ring); }
+  }
+
+  .opt:active:not([disabled]) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #dbe3ee;
+  }
+
+  .opt[disabled] { cursor: default; }
+
+  /* erst angetippt und angehört, noch nicht bestätigt */
+  .opt.sel {
+    border-color: var(--ring);
+    background: #eef2ff;
+  }
+
+  .opt.good {
+    border-color: var(--minute);
+    background: #e3f5f1;
+    animation: pop .45s ease;
+  }
+
+  .bad { animation: wiggle .45s ease; }
+  .opt.bad { border-color: var(--accent); }
+
+  .opt.dim { opacity: .3; }
+
+  /* Lösung zeigen: sanftes Pulsieren statt rotem Kreuz */
+  .show-me {
+    border-color: var(--minute) !important;
+    animation: glow 1.1s ease-in-out infinite;
+  }
+
+  @keyframes pop {
+    40% { transform: scale(1.1); }
+  }
+
+  @keyframes wiggle {
+    20% { transform: translateX(-10px) rotate(-3deg); }
+    40% { transform: translateX(9px) rotate(3deg); }
+    60% { transform: translateX(-6px) rotate(-2deg); }
+    80% { transform: translateX(4px); }
+  }
+
+  @keyframes glow {
+    50% { box-shadow: 0 0 0 9px rgba(42, 157, 143, .28), 0 6px 0 #dbe3ee; transform: scale(1.04); }
+  }
+
+  .ok-btn {
+    min-width: 96px;
+    height: 84px;
+    padding: 0 26px;
+    font-size: 40px;
+    line-height: 1;
+    border: none;
+    border-radius: 42px;
+    background: var(--minute);
+    color: #fff;
+    box-shadow: 0 7px 0 var(--minute-dark);
+    cursor: pointer;
+    transition: opacity .2s ease;
+  }
+
+  .ok-btn:active:not([disabled]) { transform: translateY(4px); box-shadow: 0 3px 0 var(--minute-dark); }
+  .ok-btn[disabled] { opacity: .3; cursor: default; }
+  .ok-btn.ready { animation: breathe 1.6s ease-in-out infinite; }
+
+  /* ---------- Gespräch: Teddy und das Kind ---------- */
+  .scene {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .actor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .actor .who { font-size: clamp(54px, 14vw, 80px); line-height: 1; }
+  .actor .who.talk { animation: hop .5s ease-in-out infinite; }
+
+  @keyframes hop {
+    50% { transform: translateY(-8px); }
+  }
+
+  .bubble {
+    position: relative;
+    font: inherit;
+    min-width: 96px;
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 4px solid var(--hour);
+    border-radius: 26px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .bubble .pic { font-size: clamp(40px, 10vw, 56px); }
+  .bubble.kid { border-color: var(--minute); }
+  .bubble.think { border-style: dashed; border-color: var(--soft); border-radius: 50%; padding: 14px 18px; }
+  .bubble.think .pic.small { font-size: clamp(24px, 6vw, 34px); }
+
+  .bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -14px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border: inherit;
+    border-width: 0 4px 4px 0;
+    transform: rotate(45deg);
+    left: 26px;
+  }
+
+  .bubble.kid::after { left: auto; right: 26px; transform: rotate(45deg); }
+  .bubble.think::after { display: none; }
+
+  .bubble .lbl { font-size: clamp(15px, 3.4vw, 19px); }
+
+  /* Satzstreifen beim Satz-Bauen: „I'd like some [  ]“ */
+  .strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    border: 4px solid var(--minute);
+    border-radius: 26px;
+    background: #fff;
+  }
+
+  .strip .who { font-size: clamp(36px, 9vw, 48px); }
+
+  .gap {
+    min-width: 1.6em;
+    min-height: 1.2em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 5px solid var(--line);
+    font-size: clamp(40px, 10vw, 56px);
+    color: var(--soft);
+  }
+
+  .gap.filled { border-color: var(--minute); animation: pop .35s ease; }
+
+  /* ---------- Zuhören ---------- */
+  .chat {
+    width: 100%;
+    max-width: 620px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: .45;
+    transition: opacity .25s ease;
+  }
+
+  .line.kid { flex-direction: row-reverse; }
+  .line.seen { opacity: 1; }
+  .line .who { font-size: clamp(38px, 9vw, 50px); line-height: 1; flex: none; }
+  .line.now .who { animation: hop .5s ease-in-out infinite; }
+
+  .line .bubble { flex-direction: row; gap: 10px; text-align: left; }
+  .line .bubble .pic { font-size: clamp(32px, 8vw, 44px); }
+  .line .bubble::after { display: none; }
+  .line.now .bubble { box-shadow: 0 0 0 6px rgba(244, 162, 89, .35); }
+
+  .ctrl {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* ---------- Entdecken ---------- */
+  .ex-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+
+  .ex-card {
+    font: inherit;
+    padding: 12px 4px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 4px solid var(--line);
+    border-radius: 22px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 5px 0 #dbe3ee;
+    cursor: pointer;
+  }
+
+  .ex-card.on {
+    border-color: var(--accent);
+    background: #fff4e8;
+    animation: pop .4s ease;
+  }
+
+  /* ---------- Memory ---------- */
+  .mem-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .mem {
+    font: inherit;
+    aspect-ratio: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    perspective: 600px;
+    cursor: pointer;
+  }
+
+  .mem-in {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    transition: transform .35s ease;
+    transform-style: preserve-3d;
+  }
+
+  .mem.open .mem-in { transform: rotateY(180deg); }
+
+  .mem-front, .mem-back {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .mem-back {
+    background: var(--ring);
+    background-image: radial-gradient(rgba(255, 255, 255, .25) 2px, transparent 2.5px);
+    background-size: 14px 14px;
+    color: #fff;
+    font-size: clamp(30px, 8vw, 44px);
+    box-shadow: 0 5px 0 #3048c4;
+  }
+
+  .mem-front {
+    transform: rotateY(180deg);
+    background: #fff;
+    border: 4px solid var(--line);
+  }
+
+  .mem-front .pic { font-size: clamp(34px, 9vw, 54px); }
+  .mem.done .mem-front { border-color: var(--minute); background: #e3f5f1; }
+
+  /* ---------- Simon says: Figur ---------- */
+  .figure { width: 100%; display: flex; justify-content: center; }
+  .figure svg { height: min(52vh, 380px); width: auto; max-width: 100%; touch-action: manipulation; }
+  .figure [data-part] { cursor: pointer; }
+  .figure .blink { animation: blink .9s ease-in-out infinite; }
+
+  @keyframes blink {
+    50% { opacity: .25; }
+  }
+
+  /* Bewegungen zum Nachmachen */
+  .moves { font-size: clamp(100px, 28vw, 150px); line-height: 1.1; display: inline-block; }
+  .mv-jump    { animation: mv-jump .7s ease-in-out infinite; }
+  .mv-run     { animation: mv-run .6s ease-in-out infinite alternate; }
+  .mv-clap    { animation: mv-clap .4s ease-in-out infinite; }
+  .mv-spin    { animation: mv-spin 1.4s linear infinite; }
+  .mv-wave    { animation: mv-wave .5s ease-in-out infinite alternate; transform-origin: 70% 90%; }
+  .mv-sway    { animation: mv-wave 1s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  .mv-down    { animation: mv-down 1.2s ease-in-out infinite; }
+  .mv-stretch { animation: mv-stretch 1s ease-in-out infinite; }
+
+  @keyframes mv-jump    { 50% { transform: translateY(-34px); } }
+  @keyframes mv-run     { from { transform: translateX(-30px); } to { transform: translateX(30px); } }
+  @keyframes mv-clap    { 50% { transform: scale(1.25); } }
+  @keyframes mv-spin    { to { transform: rotateY(360deg); } }
+  @keyframes mv-wave    { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+  @keyframes mv-down    { 50% { transform: translateY(24px) scaleY(.8); } }
+  @keyframes mv-stretch { 50% { transform: scaleY(1.18); } }
+
+  /* ---------- Mikrofon ---------- */
+  .mic {
+    width: 112px;
+    height: 112px;
+    font-size: 54px;
+    line-height: 1;
+    border: 5px solid var(--hour);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 7px 0 rgba(228, 87, 46, .3);
+    cursor: pointer;
+  }
+
+  .mic:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(228, 87, 46, .3); }
+  .mic[disabled] { opacity: .3; cursor: default; }
+
+  /* Während der Aufnahme pulsiert der Knopf rot: jetzt sprechen! */
+  .mic.rec {
+    background: var(--hour);
+    animation: rec 1s ease-in-out infinite;
+  }
+
+  @keyframes rec {
+    50% { box-shadow: 0 0 0 16px rgba(228, 87, 46, .25), 0 7px 0 rgba(228, 87, 46, .3); transform: scale(1.06); }
+  }
+
+  .heard { margin: 0; min-height: 1.4em; font-size: 15px; color: var(--soft); }
+  .heard.warn { color: var(--hour); }
+  .ok-btn[hidden] { display: none; }
+  .big-pic .pic { font-size: clamp(90px, 24vw, 140px); }
+
+  /* ---------- Start, Ende ---------- */
+  .play {
+    width: 128px;
+    height: 128px;
+    font-size: 60px;
+    line-height: 1;
+    padding-left: 10px;
+    border: none;
+    border-radius: 50%;
+    background: var(--minute);
+    color: #fff;
+    box-shadow: 0 8px 0 var(--minute-dark);
+    cursor: pointer;
+    animation: breathe 1.8s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    50% { transform: scale(1.06); }
+  }
+
+  .stars {
+    display: flex;
+    gap: 8px;
+    font-size: clamp(54px, 14vw, 76px);
+    line-height: 1;
+  }
+
+  .stars span { animation: star-in .5s ease-out backwards; }
+  .stars span:nth-child(2) { animation-delay: .25s; }
+  .stars span:nth-child(3) { animation-delay: .5s; }
+
+  @keyframes star-in {
+    from { transform: scale(0) rotate(-90deg); }
+  }
+
+  .end-title { font-size: clamp(54px, 14vw, 76px); line-height: 1; }
+
+  .recap {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .recap span.r {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+    padding: 4px;
+    border-radius: 16px;
+    background: #e3f5f1;
+  }
+
+  .recap .pic { font-size: 30px; }
+  .recap span.help { background: #fdeedd; }
+
+  .recap span.r::after {
+    content: "✓";
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--minute);
+    color: #fff;
+    font: bold 14px/22px system-ui, sans-serif;
+  }
+
+  .recap span.help::after { content: "↺"; background: var(--accent); }
+
+  .round-btn {
+    min-width: 96px;
+    height: 96px;
+    padding: 0 22px;
+    font-size: 44px;
+    line-height: 1;
+    border: none;
+    border-radius: 48px;
+    background: var(--accent);
+    box-shadow: 0 7px 0 var(--accent-dark);
+    cursor: pointer;
+  }
+
+  .round-btn.go { background: var(--minute); box-shadow: 0 7px 0 var(--minute-dark); color: #fff; }
+  .round-btn.small { min-width: 72px; height: 72px; font-size: 32px; padding: 0 16px; }
+  .round-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 var(--accent-dark); }
+  .round-btn.go:active { box-shadow: 0 3px 0 var(--minute-dark); }
+  .round-btn[disabled] { opacity: .3; cursor: default; }
+
+  .small-btn {
+    font: inherit;
+    font-size: 17px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 999px;
+    background: var(--ring);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* ---------- Sternchen-Wirbel bei richtiger Antwort ---------- */
+  .burst {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .burst span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 26px;
+    transform: translate(-50%, -50%);
+    animation: fly .8s ease-out forwards;
+  }
+
+  @keyframes fly {
+    to {
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.5);
+      opacity: 0;
+    }
+  }
+
+  /* ---------- Fusszeile ---------- */
+  .hint {
+    font-size: 15px;
+    color: var(--soft);
+    text-align: center;
+    width: 100%;
+    max-width: 620px;
+    line-height: 1.6;
+  }
+
+  .hint kbd {
+    font: inherit;
+    background: #fff;
+    border: 2px solid var(--line);
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    padding: 1px 8px;
+    color: var(--ink);
+  }
+
+  /* ---------- Einstellungen (für Eltern) ---------- */
+  dialog.settings {
+    width: min(640px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    padding: 0;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  dialog.settings::backdrop { background: rgba(51, 64, 77, .45); }
+
+  .set-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 20px 20px 24px;
+  }
+
+  .set-body h2 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--ring);
+  }
+
+  .set-body fieldset {
+    margin: 0;
+    padding: 0;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .set-body legend {
+    padding: 0 0 6px;
+    font-weight: bold;
+    font-size: 17px;
+  }
+
+  .set-body .note {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--soft);
+  }
+
+  .note.warn { color: var(--hour); }
+
+  .prof-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: 8px;
+  }
+
+  .prof-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+    color: var(--soft);
+  }
+
+  .prof-row input, .prof-row select, .voice-row select {
+    font: inherit;
+    font-size: 15px;
+    min-width: 0;
+    padding: 7px 10px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .topic-checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 4px 12px;
+  }
+
+  .topic-checks h3 {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    font-size: 15px;
+    color: var(--soft);
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .check input { width: 22px; height: 22px; cursor: pointer; flex: none; }
+
+  .speeds { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+  .voice-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .voice-row select { flex: 1; }
+
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .voice-row button, .quick button, .set-foot button {
+    font: inherit;
+    font-size: 15px;
+    padding: 7px 14px;
+    border: 2px solid var(--ring);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ring);
+    cursor: pointer;
+  }
+
+  .voice-help summary { cursor: pointer; color: var(--ring); }
+  .voice-help ul { margin: 6px 0 0; padding-left: 20px; }
+  .voice-help li { margin-bottom: 4px; }
+
+  .set-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .set-foot .done {
+    background: var(--ring);
+    color: #fff;
+    font-size: 17px;
+    padding: 9px 24px;
+  }
+
+  .set-foot .reset { border-color: var(--line); color: var(--soft); }
+
+  /* ---------- Handy ---------- */
+  @media (max-width: 600px) {
+    body { padding: 14px 10px 28px; gap: 10px; }
+    h1 { font-size: 26px; }
+
+    .card { border-radius: 20px; padding: 12px; }
+
+    .speaker { width: 56px; height: 56px; font-size: 28px; }
+    .back { width: 48px; height: 48px; font-size: 24px; }
+    .screen { min-height: 360px; }
+    .stim { min-height: 110px; }
+    .task { gap: 14px; }
+    .opts { gap: 10px; }
+    .opt { min-height: 96px; border-radius: 20px; }
+    .tiles-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .tile-btn { border-radius: 18px; }
+    .ex-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .mem-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .flag-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .age-grid { gap: 8px; }
+    .prof-row { grid-template-columns: 1fr 1fr; }
+    .prof-row label:first-child { grid-column: 1 / -1; }
+    .hint { font-size: 14px; }
+  }
+
+  /* ---------- Handy quer: weniger Höhe ---------- */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body { padding: 10px 12px 16px; gap: 8px; }
+    h1 { display: none; }
+    .card { padding: 10px 14px; }
+    .game { gap: 8px; }
+    .speaker { width: 50px; height: 50px; font-size: 25px; }
+    .screen { min-height: 0; }
+    .opt { min-height: 84px; }
+    .figure svg { height: 70vh; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="index.html" class="home-link">🏠 Zur Startseite</a>
+  <button class="parent-btn" id="settingsBtn">⚙️ Einstellungen</button>
+</nav>
+
+<h1>💬 Englisch</h1>
+
+<button class="me-btn" id="meBtn" aria-label="Wer spielt? Profil ändern"></button>
+
+<div class="card game">
+  <div class="topbar">
+    <button class="back" id="backBtn" aria-label="Zurück" hidden>⬅️</button>
+    <button class="speaker" id="speakBtn" aria-label="Nochmals vorlesen" hidden>🔊</button>
+    <div class="progress" id="progress" aria-hidden="true"></div>
+  </div>
+  <div class="screen" id="screen" aria-live="polite"></div>
+</div>
+
+<p class="hint">
+  <strong>Für Eltern:</strong> Alles wird vorgelesen – Ihr Kind muss nicht lesen können.
+  Unter <strong>Wörter</strong> gibt es 14 Themen zum Entdecken, Hören, Bewegen und für Memory,
+  unter <strong>Sätze</strong> kleine Gespräche mit Teddy, dem Bären. Der Lautsprecher 🔊 wiederholt
+  jede Ansage, ⬅️ geht einen Schritt zurück. Unter <strong>⚙️ Einstellungen</strong> lassen sich
+  Themen ausblenden, die englischen Wörter als Text einblenden, die Stimmen wählen und – wenn
+  gewünscht – die Spracherkennung einschalten: Dann spricht Ihr Kind ins Mikrofon.
+  <br>Mit den Tasten <kbd>1</kbd>–<kbd>9</kbd> wählt man eine Antwort, <kbd>Leertaste</kbd> liest vor.
+</p>
+
+<dialog class="settings" id="settings">
+  <form method="dialog" class="set-body">
+    <h2 tabindex="-1" autofocus>⚙️ Einstellungen</h2>
+
+    <fieldset>
+      <legend>Profil des Kindes</legend>
+      <div class="prof-row">
+        <label>Name <input id="setName" maxlength="20" autocomplete="off"></label>
+        <label>Alter <select id="setAge"></select></label>
+        <label>Land <select id="setCountry"></select></label>
+      </div>
+      <p class="note">Kommt in den Sätzen vor: „My name is …“, „I'm … years old“, „I live in …“.
+        Ohne Angabe spricht die Figur Sam aus Grossbritannien.</p>
+      <div class="quick">
+        <button type="button" id="profAgain">Profil mit dem Kind neu eingeben</button>
+        <button type="button" id="profDel">Profil löschen</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Themen</legend>
+      <p class="note">Ausgeblendete Themen erscheinen nicht in der Auswahl – praktisch für jüngere Kinder.</p>
+      <div class="topic-checks" id="topicChecks"></div>
+      <div class="quick">
+        <button type="button" id="topicsAll">alle</button>
+        <button type="button" id="topicsFew">nur Farben, Zahlen, Tiere und Kennenlernen</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Anzeige</legend>
+      <label class="check"><input type="checkbox" id="textToggle"> Englische Wörter und Sätze als Text zeigen (für Kinder, die schon lesen)</label>
+      <label class="check"><input type="checkbox" id="deToggle"> Deutsche Übersetzung zeigen</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ton</legend>
+      <label class="check"><input type="checkbox" id="soundToggle"> Spielgeräusche und Klänge (Instrumente, Fahrzeuge)</label>
+      <div class="speeds" id="speeds">
+        <label class="check"><input type="radio" name="speed" value="slow"> langsam sprechen</label>
+        <label class="check"><input type="radio" name="speed" value="normal"> normal</label>
+        <label class="check"><input type="radio" name="speed" value="fast"> etwas schneller</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Spracherkennung (Mikrofon)</legend>
+      <label class="check"><input type="checkbox" id="recToggle"> Mein Kind spricht ins Mikrofon, das Spiel hört zu</label>
+      <p class="note" id="recNote"></p>
+      <div class="quick"><button type="button" id="recTest">🎤 Test: „Hello!“ sagen</button></div>
+      <p class="note" id="recResult"></p>
+      <details class="note voice-help">
+        <summary>So klappt's am besten</summary>
+        <ul>
+          <li>Am zuverlässigsten: <b>Chrome</b> oder <b>Edge</b> auf Android, Windows oder Mac.</li>
+          <li><b>iPad/iPhone:</b> Safari verwenden, nicht Chrome. Unter Einstellungen → Allgemein →
+            Tastatur „Diktieren“ einschalten.</li>
+          <li><b>Firefox</b> unterstützt keine Spracherkennung.</li>
+          <li>Die Seite muss über <b>https://</b> oder einen lokalen Server laufen, nicht als Datei (file://).</li>
+          <li>Es braucht Internet: Die Erkennung läuft meist auf Servern von Google, Apple bzw. Microsoft,
+            die Aufnahme wird dorthin übermittelt.</li>
+          <li>Ruhige Umgebung, das Gerät etwa eine Armlänge vom Mund entfernt, laut und deutlich sprechen.</li>
+          <li>Erst den 🎤-Knopf drücken, kurz warten, bis er rot pulsiert, dann sprechen.</li>
+          <li>Kinderstimmen werden schlechter erkannt als Erwachsenenstimmen. Am Anfang gemeinsam üben und
+            lieber ganze Sätze sagen als einzelne kurze Wörter.</li>
+        </ul>
+        <p>Die Prüfung ist grosszügig: Es reichen die wichtigen Wörter („name“ bei „My name is …“).
+          Klappt es zweimal nicht, gibt es Lob fürs Probieren und den ✔️-Knopf – Ihr Kind bleibt nie stecken.
+          Was erkannt wurde, steht klein unter dem Mikrofon.</p>
+      </details>
+    </fieldset>
+
+    <fieldset>
+      <legend>Englische Stimme</legend>
+      <div class="voice-row">
+        <select id="voiceEn" aria-label="Englische Stimme"></select>
+        <button type="button" id="testEn">▶ Probe</button>
+      </div>
+      <p class="note" id="noteEn"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Deutsche Stimme (Anweisungen)</legend>
+      <div class="voice-row">
+        <select id="voiceDe" aria-label="Deutsche Stimme"></select>
+        <button type="button" id="testDe">▶ Probe</button>
+      </div>
+      <p class="note" id="noteDe"></p>
+      <details class="note voice-help">
+        <summary>Klingt eine Stimme blechern? So gibt es eine bessere.</summary>
+        <ul>
+          <li><b>iPad/iPhone:</b> Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen →
+            Englisch (Grossbritannien) bzw. Deutsch → eine Stimme in der Premium- oder erweiterten
+            Fassung laden (z.B. „Serena“ oder „Kate“).</li>
+          <li><b>Mac:</b> Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte →
+            Systemstimme → Stimmen verwalten. Danach den Browser neu starten.</li>
+          <li><b>Windows:</b> Im Browser Edge gibt es sehr natürliche Stimmen („Natural“),
+            englisch z.B. Sonia oder Libby, deutsch z.B. Leni oder Jan.</li>
+          <li><b>Chrome:</b> „Google UK English“ klingt meist gut (braucht Internet).</li>
+        </ul>
+        <p>Das Spiel nimmt automatisch die beste Stimme – beim Englisch eine britische Frauenstimme, sonst die beste britische Männerstimme. Nur wenn eine amerikanische Stimme deutlich besser klingt, nimmt es diese.</p>
+      </details>
+    </fieldset>
+
+    <div class="set-foot">
+      <button type="button" class="reset" id="resetBtn">Alle Sterne löschen</button>
+      <button class="done" value="ok">Fertig</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* =========================================================
+   Englisch lernen
+   Wörter und kleine Gespräche mit Bildern und Sprachausgabe –
+   für Kinder, die (noch) nicht lesen können
+   ========================================================= */
+
+const ROUND = 10;          // Aufgaben pro Runde
+
+/* ---------- Kleine Helfer ---------- */
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function val(v, x) { return typeof v === "function" ? v(x) : v; }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+/* n verschiedene Einträge (nach key) aus einer Liste */
+function distinct(list, n, key) {
+  const out = [], seen = new Set();
+  for (const x of list) {
+    if (out.length >= n) break;
+    if (seen.has(key(x))) continue;
+    seen.add(key(x));
+    out.push(x);
+  }
+  return out;
+}
+
+const NUM_EN = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                "nine", "ten", "eleven", "twelve"];
+const NUM_DE = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht",
+                "neun", "zehn", "elf", "zwölf"];
+
+/* =========================================================
+   Zeichnungen
+   Für Dinge ohne Emoji (Radiergummi, Leim) und für neuere Emoji,
+   die ältere Geräte noch nicht kennen (Blockflöte, Rasseln).
+   ========================================================= */
+const SVG = {
+  rubber:
+    '<svg viewBox="0 0 64 64"><g transform="rotate(-24 32 32)">' +
+    '<rect x="8" y="22" width="48" height="22" rx="5" fill="#ff8fab"/>' +
+    '<path d="M34 22h17a5 5 0 0 1 5 5v12a5 5 0 0 1-5 5H34z" fill="#4361ee"/>' +
+    '<rect x="8" y="22" width="48" height="22" rx="5" fill="none" stroke="#33404d" stroke-opacity=".25" stroke-width="2"/>' +
+    "</g></svg>",
+  glue:
+    '<svg viewBox="0 0 64 64">' +
+    '<rect x="21" y="24" width="22" height="34" rx="4" fill="#f4f4f4" stroke="#c3cedb" stroke-width="2"/>' +
+    '<rect x="21" y="32" width="22" height="14" fill="#4361ee"/>' +
+    '<text x="32" y="43" font-size="9" font-weight="bold" fill="#fff" text-anchor="middle" font-family="sans-serif">GLUE</text>' +
+    '<rect x="23" y="6" width="18" height="20" rx="4" fill="#f4a259"/>' +
+    "</svg>",
+  recorder:
+    '<svg viewBox="0 0 64 64"><g transform="rotate(40 32 32)">' +
+    '<rect x="27" y="2" width="10" height="60" rx="5" fill="#d9a066"/>' +
+    '<rect x="26" y="2" width="12" height="11" rx="5" fill="#fff3e0" stroke="#d9a066" stroke-width="1.5"/>' +
+    '<g fill="#6b3e1e"><circle cx="32" cy="22" r="2"/><circle cx="32" cy="29" r="2"/><circle cx="32" cy="36" r="2"/>' +
+    '<circle cx="32" cy="43" r="2"/><circle cx="32" cy="50" r="2"/></g>' +
+    "</g></svg>",
+  maracas:
+    '<svg viewBox="0 0 64 64">' +
+    '<g transform="rotate(-22 22 34)"><rect x="19.5" y="34" width="5" height="26" rx="2.5" fill="#8d5524"/>' +
+    '<ellipse cx="22" cy="22" rx="12" ry="15" fill="#e63946"/><path d="M12 22h20" stroke="#ffd23f" stroke-width="3"/></g>' +
+    '<g transform="rotate(22 42 34)"><rect x="39.5" y="34" width="5" height="26" rx="2.5" fill="#8d5524"/>' +
+    '<ellipse cx="42" cy="22" rx="12" ry="15" fill="#fb8b24"/><path d="M32 22h20" stroke="#2a9d4f" stroke-width="3"/></g>' +
+    "</svg>"
+};
+
+/* Kann dieses Gerät das Emoji zeigen? Ein farbiges Emoji hinterlässt auf
+   der Leinwand bunte Pixel, ein fehlendes nur ein graues Kästchen. */
+const emojiCache = {};
+
+function emojiOK(e) {
+  if (e in emojiCache) return emojiCache[e];
+  let ok = true;
+  try {
+    const c = document.createElement("canvas");
+    c.width = c.height = 32;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.fillStyle = "#000";
+    g.textBaseline = "top";
+    g.font = "28px sans-serif";
+    g.fillText(e, 0, 0);
+    const d = g.getImageData(0, 0, 32, 32).data;
+    ok = false;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] && (d[i] !== d[i + 1] || d[i + 1] !== d[i + 2])) { ok = true; break; }
+    }
+  } catch (err) { ok = true; }
+  return (emojiCache[e] = ok);
+}
+
+/* ---------- Flaggen ----------
+   Als Zeichnung statt Emoji: Windows zeigt Flaggen-Emoji nur als „CH“. */
+function starPath(cx, cy, R, r) {
+  let d = "";
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r : R;
+    d += (i ? "L" : "M") + (cx + rad * Math.cos(a)).toFixed(2) + " " + (cy + rad * Math.sin(a)).toFixed(2);
+  }
+  return d + "Z";
+}
+
+function stripes(colors, vertical) {
+  const n = colors.length, s = (vertical ? 30 : 20) / n;
+  return colors.map((c, i) => vertical
+    ? '<rect x="' + (i * s).toFixed(2) + '" width="' + (s + .05).toFixed(2) + '" height="20" fill="' + c + '"/>'
+    : '<rect y="' + (i * s).toFixed(2) + '" width="30" height="' + (s + .05).toFixed(2) + '" fill="' + c + '"/>').join("");
+}
+
+const FLAG_ART = {
+  ch: '<rect width="30" height="20" fill="#d52b1e"/><path d="M13 4h4v4h4v4h-4v4h-4v-4H9V8h4z" fill="#fff"/>',
+  de: stripes(["#000", "#dd0000", "#ffce00"]),
+  at: stripes(["#c8102e", "#fff", "#c8102e"]),
+  li: stripes(["#002b7f", "#ce1126"]) +
+      '<path d="M4.4 8.2l-.5-3 1.6 1.3 1.6-2.4 1.6 2.4 1.6-1.3-.5 3z" fill="#ffd83d"/>',
+  fr: stripes(["#0055a4", "#fff", "#ef4135"], true),
+  it: stripes(["#009246", "#fff", "#ce2b37"], true),
+  es: stripes(["#aa151b", "#f1bf00", "#f1bf00", "#aa151b"]) +
+      '<rect x="7" y="7.6" width="3" height="4.4" rx=".8" fill="#aa151b" opacity=".8"/>',
+  pt: '<rect width="30" height="20" fill="#da291c"/><rect width="12" height="20" fill="#046a38"/>' +
+      '<circle cx="12" cy="10" r="3.8" fill="#ffe900"/><circle cx="12" cy="10" r="2.5" fill="#da291c"/>' +
+      '<rect x="11" y="8.6" width="2" height="2.6" rx=".6" fill="#fff"/>',
+  gb: '<rect width="30" height="20" fill="#012169"/>' +
+      '<path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/>' +
+      '<path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" stroke-width="1.4"/>' +
+      '<path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/>' +
+      '<path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.4"/>',
+  us: (() => {
+    const h = 20 / 13;
+    let s = '<rect width="30" height="20" fill="#b22234"/>';
+    for (let i = 1; i < 13; i += 2) s += '<rect y="' + (i * h).toFixed(2) + '" width="30" height="' + h.toFixed(2) + '" fill="#fff"/>';
+    s += '<rect width="12" height="' + (7 * h).toFixed(2) + '" fill="#3c3b6e"/>';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) {
+      s += '<circle cx="' + (1.4 + c * 2.3).toFixed(1) + '" cy="' + (1.4 + r * 2.4).toFixed(1) + '" r=".45" fill="#fff"/>';
+    }
+    return s;
+  })(),
+  tr: '<rect width="30" height="20" fill="#e30a17"/><circle cx="11" cy="10" r="5" fill="#fff"/>' +
+      '<circle cx="12.3" cy="10" r="4" fill="#e30a17"/><path d="' + starPath(17.6, 10, 2.3, .95) + '" fill="#fff"/>',
+  xk: (() => {
+    let s = '<rect width="30" height="20" fill="#244aa5"/>' +
+            '<path d="M10.5 10.5l2.2-1.4 1.7.6 1.8-1 2.2.9 1.1 2-.6 1.6 1 1.4-1.5 1.8-2.2.2-1.4 1.1-1.7-.6-.5-1.7-1.6-.9.3-1.7z" fill="#d0a650"/>';
+    for (let i = 0; i < 6; i++) {
+      const a = (205 + i * 26) * Math.PI / 180;
+      s += '<path d="' + starPath(15 + 8 * Math.cos(a), 11.5 + 8 * Math.sin(a), 1, .4) + '" fill="#fff"/>';
+    }
+    return s;
+  })(),
+  rs: stripes(["#c6363c", "#0c4076", "#fff"]) +
+      '<rect x="7" y="4.3" width="4.4" height="7.4" rx="1.4" fill="#c6363c" stroke="#edb92e" stroke-width=".6"/>' +
+      '<path d="M9.2 5.6v4.8M7.9 8h2.6" stroke="#fff" stroke-width=".8"/>',
+  hr: (() => {
+    let s = stripes(["#ff0000", "#fff", "#171796"]);
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+      s += '<rect x="' + (12 + c * 1.2).toFixed(1) + '" y="' + (5 + r * 1.2).toFixed(1) +
+           '" width="1.2" height="1.2" fill="' + ((r + c) % 2 ? "#fff" : "#ff0000") + '"/>';
+    }
+    return s + '<rect x="12" y="5" width="6" height="6" fill="none" stroke="#ff0000" stroke-width=".3"/>';
+  })(),
+  mk: '<rect width="30" height="20" fill="#d20000"/>' +
+      '<path d="M15 10L0 0M15 10L30 0M15 10L0 20M15 10L30 20M15 10V0M15 10V20M15 10H0M15 10H30" stroke="#ffe600" stroke-width="2.6"/>' +
+      '<circle cx="15" cy="10" r="3.6" fill="#d20000"/><circle cx="15" cy="10" r="2.8" fill="#ffe600"/>',
+  ua: stripes(["#0057b7", "#ffd700"])
+};
+
+function flagSVG(k) {
+  return '<svg class="flag" viewBox="0 0 30 20" aria-hidden="true">' + FLAG_ART[k] +
+         '<rect x=".3" y=".3" width="29.4" height="19.4" fill="none" stroke="rgba(0,0,0,.18)" stroke-width=".6"/></svg>';
+}
+
+/* en: Name in Sätzen („I live in the USA“), say: Name allein,
+   din/dfrom: deutsch „in der Schweiz“ / „aus der Schweiz“ */
+const COUNTRIES = [
+  { k: "ch", en: "Switzerland",     de: "Schweiz",         din: "in der Schweiz",     dfrom: "aus der Schweiz" },
+  { k: "de", en: "Germany",         de: "Deutschland",     din: "in Deutschland",     dfrom: "aus Deutschland" },
+  { k: "at", en: "Austria",         de: "Österreich",      din: "in Österreich",      dfrom: "aus Österreich" },
+  { k: "li", en: "Liechtenstein",   de: "Liechtenstein",   din: "in Liechtenstein",   dfrom: "aus Liechtenstein" },
+  { k: "fr", en: "France",          de: "Frankreich",      din: "in Frankreich",      dfrom: "aus Frankreich" },
+  { k: "it", en: "Italy",           de: "Italien",         din: "in Italien",         dfrom: "aus Italien" },
+  { k: "es", en: "Spain",           de: "Spanien",         din: "in Spanien",         dfrom: "aus Spanien" },
+  { k: "pt", en: "Portugal",        de: "Portugal",        din: "in Portugal",        dfrom: "aus Portugal" },
+  { k: "gb", en: "Great Britain",   de: "Grossbritannien", din: "in Grossbritannien", dfrom: "aus Grossbritannien" },
+  { k: "us", en: "the USA", say: "USA", de: "USA",         din: "in den USA",         dfrom: "aus den USA" },
+  { k: "tr", en: "Turkey",          de: "Türkei",          din: "in der Türkei",      dfrom: "aus der Türkei" },
+  { k: "xk", en: "Kosovo",          de: "Kosovo",          din: "im Kosovo",          dfrom: "aus dem Kosovo" },
+  { k: "rs", en: "Serbia",          de: "Serbien",         din: "in Serbien",         dfrom: "aus Serbien" },
+  { k: "hr", en: "Croatia",         de: "Kroatien",        din: "in Kroatien",        dfrom: "aus Kroatien" },
+  { k: "mk", en: "North Macedonia", de: "Nordmazedonien",  din: "in Nordmazedonien",  dfrom: "aus Nordmazedonien" },
+  { k: "ua", en: "Ukraine",         de: "Ukraine",         din: "in der Ukraine",     dfrom: "aus der Ukraine" }
+].map(c => Object.assign(c, { flag: c.k }));
+
+const COUNTRY = Object.fromEntries(COUNTRIES.map(c => [c.k, c]));
+
+const AGES = [];
+for (let n = 3; n <= 12; n++) AGES.push({ k: "age" + n, n, en: NUM_EN[n], de: NUM_DE[n] });
+
+/* =========================================================
+   Wörter
+   Jedes Wort: en, de, e (Emoji) und je nach Thema
+   color/n (Farbe, Zahl), svg (Zeichnung), pl/dpl (Mehrzahl),
+   dacc (deutsch „einen Hund“), play (Instrument im Satz)
+   ========================================================= */
+function topicOf(k, icon, en, de, rows) {
+  return {
+    k, icon, en, de,
+    items: rows.map(([wen, wde, e, more]) => Object.assign({ en: wen, de: wde, e, key: k + ":" + wen }, more))
+  };
+}
+
+const TOPICS = [
+  topicOf("colors", "🎨", "Colours", "Farben", [
+    ["red", "rot", "", { color: "#e63946" }],
+    ["blue", "blau", "", { color: "#3a7bd5" }],
+    ["green", "grün", "", { color: "#2a9d4f" }],
+    ["yellow", "gelb", "", { color: "#ffd23f" }],
+    ["orange", "orange", "", { color: "#fb8b24" }],
+    ["purple", "violett", "", { color: "#8e44ad" }],
+    ["pink", "rosa", "", { color: "#ff8fab" }],
+    ["brown", "braun", "", { color: "#8d5524" }],
+    ["black", "schwarz", "", { color: "#222" }],
+    ["white", "weiss", "", { color: "#fff" }],
+    ["grey", "grau", "", { color: "#9aa5b1" }]
+  ]),
+  topicOf("numbers", "🔢", "Numbers", "Zahlen",
+    NUM_EN.slice(1, 11).map((w, i) => [w, NUM_DE[i + 1], "", { n: i + 1 }])),
+  topicOf("animals", "🐶", "Animals", "Tiere", [
+    ["dog", "Hund", "🐶", { pl: "dogs", dpl: "Hunde", dacc: "einen Hund" }],
+    ["cat", "Katze", "🐱", { pl: "cats", dpl: "Katzen", dacc: "eine Katze" }],
+    ["mouse", "Maus", "🐭", { pl: "mice", dpl: "Mäuse", dacc: "eine Maus" }],
+    ["rabbit", "Hase", "🐰", { pl: "rabbits", dpl: "Hasen", dacc: "einen Hasen" }],
+    ["horse", "Pferd", "🐴", { pl: "horses", dpl: "Pferde", dacc: "ein Pferd" }],
+    ["cow", "Kuh", "🐮", { pl: "cows", dpl: "Kühe" }],
+    ["pig", "Schwein", "🐷", { pl: "pigs", dpl: "Schweine" }],
+    ["sheep", "Schaf", "🐑", { pl: "sheep", dpl: "Schafe" }],
+    ["bird", "Vogel", "🐦", { pl: "birds", dpl: "Vögel", dacc: "einen Vogel" }],
+    ["fish", "Fisch", "🐟", { pl: "fish", dpl: "Fische", dacc: "einen Fisch" }],
+    ["duck", "Ente", "🦆", { pl: "ducks", dpl: "Enten" }],
+    ["lion", "Löwe", "🦁", { pl: "lions", dpl: "Löwen" }],
+    ["elephant", "Elefant", "🐘", { pl: "elephants", dpl: "Elefanten" }],
+    ["monkey", "Affe", "🐵", { pl: "monkeys", dpl: "Affen" }],
+    ["hamster", "Hamster", "🐹", { pl: "hamsters", dpl: "Hamster", dacc: "einen Hamster" }],
+    ["tortoise", "Schildkröte", "🐢", { pl: "tortoises", dpl: "Schildkröten", dacc: "eine Schildkröte" }]
+  ]),
+  topicOf("food", "🍎", "Food", "Essen", [
+    ["apple", "Apfel", "🍎", { pl: "apples", dpl: "Äpfel" }],
+    ["banana", "Banane", "🍌", { pl: "bananas", dpl: "Bananen" }],
+    ["bread", "Brot", "🍞", { pl: "bread", dpl: "Brot" }],
+    ["cheese", "Käse", "🧀", { pl: "cheese", dpl: "Käse" }],
+    ["milk", "Milch", "🥛", { pl: "milk", dpl: "Milch" }],
+    ["water", "Wasser", "💧", { pl: "water", dpl: "Wasser" }],
+    ["egg", "Ei", "🥚", { pl: "eggs", dpl: "Eier" }],
+    ["pizza", "Pizza", "🍕", { pl: "pizza", dpl: "Pizza" }],
+    ["carrot", "Karotte", "🥕", { pl: "carrots", dpl: "Karotten" }],
+    ["cake", "Kuchen", "🍰", { pl: "cake", dpl: "Kuchen" }],
+    ["ice cream", "Glace", "🍦", { pl: "ice cream", dpl: "Glace" }],
+    ["strawberry", "Erdbeere", "🍓", { pl: "strawberries", dpl: "Erdbeeren" }],
+    ["chocolate", "Schokolade", "🍫", { pl: "chocolate", dpl: "Schokolade" }],
+    ["orange", "Orange", "🍊", { pl: "oranges", dpl: "Orangen" }]
+  ]),
+  topicOf("body", "👃", "My body", "Körper", [
+    ["face", "Gesicht", "🙂"],
+    ["eye", "Auge", "👁️"],
+    ["ear", "Ohr", "👂"],
+    ["nose", "Nase", "👃"],
+    ["mouth", "Mund", "👄"],
+    ["tooth", "Zahn", "🦷"],
+    ["tongue", "Zunge", "👅"],
+    ["hair", "Haare", "💇"],
+    ["hand", "Hand", "✋"],
+    ["arm", "Arm", "💪"],
+    ["leg", "Bein", "🦵"],
+    ["foot", "Fuss", "🦶"]
+  ]),
+  topicOf("clothes", "👕", "Clothes", "Kleider", [
+    ["T-shirt", "T-Shirt", "👕"],
+    ["trousers", "Hose", "👖"],
+    ["dress", "Kleid", "👗"],
+    ["shoes", "Schuhe", "👟"],
+    ["socks", "Socken", "🧦"],
+    ["cap", "Kappe", "🧢"],
+    ["hat", "Hut", "👒"],
+    ["jacket", "Jacke", "🧥"],
+    ["scarf", "Schal", "🧣"],
+    ["gloves", "Handschuhe", "🧤"],
+    ["boots", "Stiefel", "👢"],
+    ["swimsuit", "Badeanzug", "🩱"]
+  ]),
+  topicOf("family", "👪", "Family", "Familie", [
+    ["mum", "Mama", "👩", { dm: "meiner Mama" }],
+    ["dad", "Papa", "👨", { dm: "meinem Papa" }],
+    ["sister", "Schwester", "👧", { dm: "meiner Schwester", dacc: "eine Schwester" }],
+    ["brother", "Bruder", "👦", { dm: "meinem Bruder", dacc: "einen Bruder" }],
+    ["baby", "Baby", "👶"],
+    ["grandma", "Oma", "👵", { dm: "meiner Oma" }],
+    ["grandpa", "Opa", "👴", { dm: "meinem Opa" }],
+    ["family", "Familie", "👨‍👩‍👧"]
+  ]),
+  topicOf("feelings", "😊", "Feelings", "Gefühle", [
+    ["happy", "fröhlich", "😊"],
+    ["sad", "traurig", "😢"],
+    ["angry", "wütend", "😠"],
+    ["scared", "ängstlich", "😨"],
+    ["tired", "müde", "😴"],
+    ["surprised", "überrascht", "😮"],
+    ["ill", "krank", "🤒"],
+    ["hungry", "hungrig", "😋"],
+    ["cold", "kalt", "🥶"],
+    ["hot", "heiss", "🥵"]
+  ]),
+  topicOf("school", "🏫", "School", "Schule", [
+    ["pencil", "Bleistift", "✏️", { dacc: "einen Bleistift" }],
+    ["crayon", "Wachsmalstift", "🖍️", { dacc: "einen Wachsmalstift" }],
+    ["book", "Buch", "📕", { dacc: "ein Buch" }],
+    ["school bag", "Schulranzen", "🎒"],
+    ["ruler", "Lineal", "📏", { dacc: "ein Lineal" }],
+    ["scissors", "Schere", "✂️"],
+    ["paper", "Papier", "📄"],
+    ["teacher", "Lehrerin", "🧑‍🏫"],
+    ["school", "Schule", "🏫"],
+    ["computer", "Computer", "💻"],
+    ["rubber", "Radiergummi", "", { svg: "rubber", dacc: "einen Radiergummi" }],
+    ["glue", "Leim", "", { svg: "glue" }]
+  ]),
+  topicOf("nature", "🌳", "Nature", "Natur", [
+    ["tree", "Baum", "🌳"],
+    ["flower", "Blume", "🌸"],
+    ["leaf", "Blatt", "🍃"],
+    ["mushroom", "Pilz", "🍄"],
+    ["sun", "Sonne", "☀️"],
+    ["moon", "Mond", "🌙"],
+    ["star", "Stern", "⭐"],
+    ["rain", "Regen", "🌧️"],
+    ["snow", "Schnee", "❄️"],
+    ["mountain", "Berg", "⛰️"],
+    ["sea", "Meer", "🌊"],
+    ["rainbow", "Regenbogen", "🌈"]
+  ]),
+  topicOf("music", "🎵", "Music", "Musik", [
+    ["piano", "Klavier", "🎹", { play: "the piano" }],
+    ["guitar", "Gitarre", "🎸", { play: "the guitar" }],
+    ["drum", "Trommel", "🥁", { play: "the drums", dplay: "Schlagzeug" }],
+    ["violin", "Geige", "🎻", { play: "the violin" }],
+    ["trumpet", "Trompete", "🎺", { play: "the trumpet" }],
+    ["saxophone", "Saxofon", "🎷", { play: "the saxophone" }],
+    ["recorder", "Blockflöte", "🪈", { svg: "recorder", play: "the recorder" }],
+    ["accordion", "Akkordeon", "🪗", { play: "the accordion" }],
+    ["maracas", "Rasseln", "🪇", { svg: "maracas" }],
+    ["singing", "singen", "🎤"]
+  ]),
+  topicOf("traffic", "🚦", "Traffic", "Verkehr", [
+    ["car", "Auto", "🚗"],
+    ["bus", "Bus", "🚌"],
+    ["train", "Zug", "🚆"],
+    ["tram", "Tram", "🚋"],
+    ["bike", "Velo", "🚲"],
+    ["motorbike", "Motorrad", "🏍️"],
+    ["plane", "Flugzeug", "✈️"],
+    ["boat", "Boot", "⛵"],
+    ["helicopter", "Helikopter", "🚁"],
+    ["tractor", "Traktor", "🚜"],
+    ["fire engine", "Feuerwehrauto", "🚒"],
+    ["traffic light", "Ampel", "🚦"]
+  ]),
+  topicOf("tech", "💻", "Technology", "Technik", [
+    ["computer", "Computer", "💻"],
+    ["phone", "Handy", "📱"],
+    ["robot", "Roboter", "🤖"],
+    ["rocket", "Rakete", "🚀"],
+    ["camera", "Kamera", "📷"],
+    ["TV", "Fernseher", "📺"],
+    ["light bulb", "Glühbirne", "💡"],
+    ["battery", "Batterie", "🔋"],
+    ["headphones", "Kopfhörer", "🎧"],
+    ["clock", "Uhr", "⏰"],
+    ["magnet", "Magnet", "🧲"],
+    ["keyboard", "Tastatur", "⌨️"]
+  ]),
+  topicOf("sport", "⚽", "Sport", "Sport", [
+    ["football", "Fussball", "⚽"],
+    ["basketball", "Basketball", "🏀"],
+    ["tennis", "Tennis", "🎾"],
+    ["table tennis", "Tischtennis", "🏓"],
+    ["volleyball", "Volleyball", "🏐"],
+    ["ice hockey", "Eishockey", "🏒"],
+    ["swimming", "schwimmen", "🏊"],
+    ["skiing", "Ski fahren", "⛷️"],
+    ["running", "rennen", "🏃"],
+    ["cycling", "Velo fahren", "🚴"],
+    ["gymnastics", "turnen", "🤸"],
+    ["skateboarding", "Skateboard fahren", "🛹"]
+  ])
+];
+
+const TOPIC = Object.fromEntries(TOPICS.map(t => [t.k, t]));
+function W(tk, en) { return TOPIC[tk].items.find(x => x.en === en); }
+function Ws(tk, list) { return list.map(en => W(tk, en)); }
+
+/* ---------- Bild zu einem Ding ---------- */
+function em(e) { return '<span class="em">' + e + "</span>"; }
+
+function numPic(n) {
+  let dots = "";
+  for (let i = 0; i < n; i++) dots += "<span></span>";
+  return '<span class="num"><b>' + n + "</b><i>" + dots + "</i></span>";
+}
+
+function pic(x) {
+  if (x.color) return '<span class="dot" style="--c:' + x.color + '"></span>';
+  if (x.n) return numPic(x.n);
+  if (x.flag) return flagSVG(x.flag);
+  if (x.svg && (!x.e || !emojiOK(x.e))) return '<span class="svgpic">' + SVG[x.svg] + "</span>";
+  return em(x.e);
+}
+
+function picKey(x) { return x.color || x.n || x.flag || x.svg || x.e; }
+
+/* Text unter einem Bild – nur wenn die Eltern es wollen */
+function labels(en, de) {
+  return (store.showText && en ? '<span class="lbl">' + esc(en) + "</span>" : "") +
+         (store.showDe && de ? '<span class="de">' + esc(de) + "</span>" : "");
+}
+
+/* =========================================================
+   Sätze & kleine Gespräche
+   Teddy (der Bär) fragt, das Kind antwortet. Jede Situation hat
+   mehrere Frage-Antwort-Paare. Ein Paar hat:
+     q, qd, qp   – Frage englisch, deutsch, Bild in der Sprechblase
+     list        – mögliche Werte für die Lücke („I'd like some …“)
+     me          – der Wert kommt aus dem Profil (Name, Alter, Land)
+     a, ad, ap   – Antwort englisch, deutsch, Bild
+     pre         – Satzanfang beim Satz-Bauen (fehlt: nicht baubar)
+     val, pool   – was in die Lücke kommt und woraus man wählt
+     hint        – was das Kind beim Satz-Bauen in der Denkblase sieht
+     yn          – Ja/Nein-Frage: beide Antworten sind richtig
+   ========================================================= */
+const HOUSES = [
+  { en: "a house", de: "in einem Haus", e: "🏠" },
+  { en: "a flat", de: "in einer Wohnung", e: "🏢" }
+];
+
+const FINE = { en: "fine", de: "gut", e: "🙂" };
+
+const THINGS = [
+  ["banana", "die Banane", "🍌", "yellow"], ["apple", "der Apfel", "🍎", "red"],
+  ["frog", "der Frosch", "🐸", "green"], ["carrot", "die Karotte", "🥕", "orange"],
+  ["elephant", "der Elefant", "🐘", "grey"], ["sea", "das Meer", "🌊", "blue"],
+  ["chocolate", "die Schokolade", "🍫", "brown"], ["strawberry", "die Erdbeere", "🍓", "red"],
+  ["sun", "die Sonne", "☀️", "yellow"], ["leaf", "das Blatt", "🍃", "green"],
+  ["pig", "das Schwein", "🐷", "pink"], ["snow", "der Schnee", "❄️", "white"]
+].map(([en, de, e, c]) => ({ en, de, e, col: W("colors", c) }));
+
+const WEATHER = [
+  { en: "sunny", e: "☀️", ds: "Es ist sonnig." },
+  { en: "rainy", e: "🌧️", ds: "Es regnet." },
+  { en: "snowy", e: "🌨️", ds: "Es schneit." },
+  { en: "windy", e: "🌬️", ds: "Es ist windig." },
+  { en: "cloudy", e: "☁️", ds: "Es ist bewölkt." },
+  { en: "stormy", e: "⛈️", ds: "Es gewittert." }
+];
+
+const IS_IT = [
+  { en: "cold", de: "kalt", e: "🥶" }, { en: "hot", de: "heiss", e: "🥵" },
+  { en: "sunny", de: "sonnig", e: "☀️" }, { en: "windy", de: "windig", e: "🌬️" }
+];
+
+const HOBBIES = [
+  { en: "swimming", d: "schwimme gerne", e: "🏊" },
+  { en: "skiing", d: "fahre gerne Ski", e: "⛷️" },
+  { en: "running", d: "renne gerne", e: "🏃" },
+  { en: "cycling", d: "fahre gerne Velo", e: "🚴" },
+  { en: "skateboarding", d: "fahre gerne Skateboard", e: "🛹" },
+  { en: "singing", d: "singe gerne", e: "🎤" },
+  { en: "dancing", d: "tanze gerne", e: "💃" },
+  { en: "reading", d: "lese gerne", e: "📚" },
+  { en: "painting", d: "male gerne", e: "🎨" }
+];
+
+const WAYS = [
+  { en: "bus", go: "I go by bus.", dgo: "Ich fahre mit dem Bus.", e: "🚌" },
+  { en: "bike", go: "I go by bike.", dgo: "Ich fahre mit dem Velo.", e: "🚲" },
+  { en: "car", go: "I go by car.", dgo: "Ich fahre mit dem Auto.", e: "🚗" },
+  { en: "train", go: "I go by train.", dgo: "Ich fahre mit dem Zug.", e: "🚆" },
+  { en: "tram", go: "I go by tram.", dgo: "Ich fahre mit dem Tram.", e: "🚋" },
+  { en: "scooter", go: "I go by scooter.", dgo: "Ich fahre mit dem Trottinett.", e: "🛴" },
+  { en: "walk", go: "I walk.", dgo: "Ich gehe zu Fuss.", e: "🚶", pre: "I" }
+];
+
+const PLACES = [
+  { en: "school", de: "zur Schule", e: "🏫" },
+  { en: "the park", de: "in den Park", e: "🌳" },
+  { en: "the shop", de: "in den Laden", e: "🛒" },
+  { en: "the zoo", de: "in den Zoo", e: "🦓" },
+  { en: "the swimming pool", de: "ins Schwimmbad", e: "🏊" },
+  { en: "the beach", de: "an den Strand", e: "🏖️" }
+];
+
+const FOODS = Ws("food", ["apple", "banana", "bread", "cheese", "milk", "egg", "pizza", "carrot",
+                          "cake", "ice cream", "strawberry", "chocolate", "orange"]);
+const LIKES = [...FOODS, ...Ws("animals", ["dog", "cat", "horse", "rabbit", "elephant"])];
+const PETS = Ws("animals", ["dog", "cat", "rabbit", "hamster", "fish", "bird", "horse", "tortoise", "mouse"]);
+const SCHOOL_THINGS = Ws("school", ["pencil", "crayon", "book", "ruler", "rubber"]);
+
+function namePic() {
+  return '<span class="me-pic"><span class="em">🧒</span><b>' + esc(me().name) + "</b></span>";
+}
+
+function fixed(q, qd, qp, a, ad, ap) {
+  return { q, qd, qp: em(qp), a: () => a, ad: () => ad, ap: () => em(ap) };
+}
+
+function yn(o) { return Object.assign({ yn: true, subj: () => [null] }, o); }
+
+const SITS = [
+  { k: "hello", icon: "👋", en: "Hello!", de: "Kennenlernen", pairs: [
+    fixed("Hello!", "Hallo!", "👋", "Hi!", "Hallo!", "😀👋"),
+    { q: "What's your name?", qd: "Wie heisst du?", qp: em("📛❓"), me: () => me().name,
+      a: n => "My name is " + n + ".", ad: n => "Ich heisse " + n + ".", ap: () => namePic() },
+    { q: "How old are you?", qd: "Wie alt bist du?", qp: em("🎂❓"), me: () => me().age, list: () => AGES,
+      a: x => "I'm " + x.en + " years old.", ad: x => "Ich bin " + x.n + " Jahre alt.", pre: "I'm" },
+    fixed("Nice to meet you!", "Freut mich!", "🤝", "Nice to meet you, too!", "Freut mich auch!", "🤝"),
+    fixed("Goodbye!", "Auf Wiedersehen!", "👋", "Bye-bye!", "Tschüss!", "👋🚶")
+  ]},
+  { k: "home", icon: "🏠", en: "My home", de: "Wohnen", pairs: [
+    { q: "Where do you live?", qd: "Wo wohnst du?", qp: em("🏠❓"), me: () => me().country, list: () => COUNTRIES,
+      a: x => "I live in " + x.en + ".", ad: x => "Ich wohne " + x.din + ".", pre: "I live in" },
+    { q: "Where are you from?", qd: "Woher kommst du?", qp: em("🌍❓"), me: () => me().country, list: () => COUNTRIES,
+      a: x => "I'm from " + x.en + ".", ad: x => "Ich komme " + x.dfrom + ".", pre: "I'm from" },
+    { q: "Do you live in a house or a flat?", qd: "Wohnst du in einem Haus oder in einer Wohnung?",
+      qp: em("🏠❓🏢"), list: () => HOUSES,
+      a: x => "I live in " + x.en + ".", ad: x => "Ich wohne " + x.de + ".", pre: "I live in" },
+    { q: "Who do you live with?", qd: "Mit wem wohnst du?", qp: em("👪❓"),
+      list: () => Ws("family", ["mum", "dad", "sister", "brother", "grandma", "grandpa"]),
+      a: x => "I live with my " + x.en + ".", ad: x => "Ich wohne mit " + x.dm + ".", pre: "I live with my" }
+  ]},
+  { k: "feel", icon: "😊", en: "How are you?", de: "Wie geht's?", pairs: [
+    { q: "How are you?", qd: "Wie geht es dir?", qp: em("😊❓"),
+      list: () => [FINE, ...Ws("feelings", ["happy", "sad", "tired", "angry", "hungry", "ill", "scared"])],
+      a: x => x === FINE ? "I'm fine, thank you." : "I'm " + x.en + ".",
+      ad: x => x === FINE ? "Mir geht es gut, danke." : "Ich bin " + x.de + ".", pre: "I'm" },
+    yn({ q: s => "Are you " + s.en + "?", qd: s => "Bist du " + s.de + "?", qp: s => pic(s) + em("❓"),
+         subj: () => Ws("feelings", ["happy", "sad", "tired", "hungry", "cold"]),
+         yes: "Yes, I am.", yd: "Ja, bin ich.", no: "No, I'm not.", nd: "Nein, bin ich nicht." })
+  ]},
+  { k: "shop", icon: "🛒", en: "At the shop", de: "Im Laden", pairs: [
+    { q: "What would you like?", qd: "Was möchtest du?", qp: em("🛒❓"), list: () => FOODS,
+      a: x => "I'd like some " + x.pl + ", please.", ad: x => "Ich möchte gerne " + x.dpl + ", bitte.",
+      pre: "I'd like some" },
+    { q: "How many apples would you like?", qd: "Wie viele Äpfel möchtest du?", qp: em("🍎❓"),
+      list: () => TOPIC.numbers.items.slice(1, 6),
+      a: x => cap(x.en) + " apples, please.", ad: x => cap(x.de) + " Äpfel, bitte.",
+      hint: x => '<span class="pic small">' + "🍎".repeat(x.n) + "</span>", pre: "" },
+    fixed("Here you are.", "Bitte schön.", "🤲", "Thank you!", "Danke!", "🙏"),
+    fixed("Anything else?", "Sonst noch etwas?", "➕❓", "No, thank you.", "Nein, danke.", "🙅")
+  ]},
+  { k: "like", icon: "👍", en: "I like it", de: "Mögen", clash: ["hobby"], pairs: [
+    yn({ q: s => "Do you like " + s.pl + "?", qd: s => "Magst du " + s.dpl + "?", qp: s => pic(s) + em("❓"),
+         subj: () => LIKES, yes: "Yes, I do.", yd: "Ja.", no: "No, I don't.", nd: "Nein." }),
+    { q: "What do you like?", qd: "Was magst du?", qp: em("❤️❓"), list: () => LIKES,
+      a: x => "I like " + x.pl + ".", ad: x => "Ich mag " + x.dpl + ".", pre: "I like" }
+  ]},
+  { k: "pets", icon: "🐶", en: "Pets", de: "Haustiere", pairs: [
+    { q: "Have you got a pet?", qd: "Hast du ein Haustier?", qp: em("🐾❓"), list: () => PETS,
+      a: x => "Yes, I've got a " + x.en + ".", ad: x => "Ja, ich habe " + x.dacc + ".", pre: "Yes, I've got a" },
+    yn({ q: s => "Have you got a " + s.en + "?", qd: s => "Hast du " + s.dacc + "?", qp: s => pic(s) + em("❓"),
+         subj: () => Ws("family", ["brother", "sister"]),
+         yes: "Yes, I have.", yd: "Ja.", no: "No, I haven't.", nd: "Nein." })
+  ]},
+  { k: "colour", icon: "🎨", en: "Colours", de: "Farben", pairs: [
+    { q: "What's your favourite colour?", qd: "Was ist deine Lieblingsfarbe?", qp: em("🎨❓"),
+      list: () => TOPIC.colors.items,
+      a: x => "My favourite colour is " + x.en + ".", ad: x => "Meine Lieblingsfarbe ist " + x.de + ".",
+      pre: "My favourite colour is" },
+    { q: x => "What colour is the " + x.en + "?", qd: x => "Welche Farbe hat " + x.de + "?",
+      qp: x => pic(x) + em("❓"), list: () => THINGS, val: x => x.col, pool: () => TOPIC.colors.items,
+      a: x => "It's " + x.col.en + ".", hint: x => pic(x), pre: "It's",
+      ad: x => ({ die: "Sie", der: "Er", das: "Es" })[x.de.split(" ")[0]] + " ist " + x.col.de + "." }
+  ]},
+  { k: "school", icon: "🏫", en: "At school", de: "In der Schule", pairs: [
+    { q: x => "Can I have a " + x.en + ", please?", qd: x => "Kann ich bitte " + x.dacc + " haben?",
+      qp: x => pic(x) + em("🙏"), list: () => SCHOOL_THINGS,
+      a: () => "Here you are.", ad: () => "Bitte schön.", ap: () => em("🤲") },
+    { q: "What's in your bag?", qd: "Was ist in deiner Tasche?", qp: em("🎒❓"), list: () => SCHOOL_THINGS,
+      a: x => "I've got a " + x.en + ".", ad: x => "Ich habe " + x.dacc + ".", pre: "I've got a" },
+    fixed("Who is this?", "Wer ist das?", "🧑‍🏫❓", "This is my teacher.", "Das ist meine Lehrerin.", "🧑‍🏫")
+  ]},
+  { k: "weather", icon: "⛅", en: "The weather", de: "Wetter", pairs: [
+    { q: "What's the weather like?", qd: "Wie ist das Wetter?", qp: em("🪟❓"), list: () => WEATHER,
+      a: x => "It's " + x.en + ".", ad: x => x.ds, pre: "It's" },
+    yn({ q: s => "Is it " + s.en + "?", qd: s => "Ist es " + s.de + "?", qp: s => pic(s) + em("❓"),
+         subj: () => IS_IT, yes: "Yes, it is.", yd: "Ja.", no: "No, it isn't.", nd: "Nein." })
+  ]},
+  { k: "hobby", icon: "🎸", en: "Hobbies", de: "Hobbys", clash: ["like"], pairs: [
+    { q: "What do you like doing?", qd: "Was machst du gerne?", qp: em("🤸❓"), list: () => HOBBIES,
+      a: x => "I like " + x.en + ".", ad: x => "Ich " + x.d + ".", pre: "I like" },
+    { q: "Do you play an instrument?", qd: "Spielst du ein Instrument?", qp: em("🎵❓"),
+      list: () => TOPIC.music.items.filter(x => x.play),
+      a: x => "I play " + x.play + ".", ad: x => "Ich spiele " + (x.dplay || x.de) + ".", pre: "I play" },
+    { q: "Do you play a sport?", qd: "Treibst du Sport?", qp: em("🏅❓"),
+      list: () => Ws("sport", ["football", "basketball", "tennis", "table tennis", "volleyball", "ice hockey"]),
+      a: x => "I play " + x.en + ".", ad: x => "Ich spiele " + x.de + ".", pre: "I play" }
+  ]},
+  { k: "way", icon: "🚌", en: "On the way", de: "Unterwegs", pairs: [
+    { q: "How do you go to school?", qd: "Wie kommst du zur Schule?", qp: em("🏫❓"), list: () => WAYS,
+      a: x => x.go, ad: x => x.dgo, pre: x => x.pre || "I go by" },
+    { q: "Where are you going?", qd: "Wohin gehst du?", qp: em("🗺️❓"), list: () => PLACES,
+      a: x => "I'm going to " + x.en + ".", ad: x => "Ich gehe " + x.de + ".", pre: "I'm going to" },
+    yn({ q: "Is it far?", qd: "Ist es weit?", qp: em("📏❓"),
+         yes: "Yes, it is.", yd: "Ja.", no: "No, it isn't.", nd: "Nein." })
+  ]}
+];
+
+/* Ein konkretes Frage-Antwort-Paar mit gewähltem Wert */
+function exchange(sit, pi) {
+  const p = sit.pairs[pi];
+  if (p.yn) {
+    const s = pick(p.subj());
+    const yesNo = ["yes", "yeah", "no", "nope"];
+    return {
+      sit, pi, key: sit.k + pi + ":" + (s ? s.en : ""),
+      q: val(p.q, s), qd: val(p.qd, s), qp: val(p.qp, s),
+      ok: [{ a: p.yes, d: p.yd, p: em("👍") }, { a: p.no, d: p.nd, p: em("👎") }],
+      kw: yesNo, any: yesNo
+    };
+  }
+  const x = p.me ? p.me() : p.list ? pick(p.list()) : null;
+  const v = p.val ? p.val(x) : x;
+  const E = {
+    sit, pi, x, key: sit.k + pi + ":" + (x ? x.en || x : ""),
+    q: val(p.q, x), qd: val(p.qd, x), qp: val(p.qp, x),
+    ok: [{ a: p.a(x), d: p.ad(x), p: p.ap ? p.ap(x) : pic(v) }]
+  };
+  // Schlüsselwörter für die Spracherkennung: das Wort in der Lücke, sofern es
+  // in der Antwort vorkommt – sonst die wichtigen Wörter der Antwort.
+  // any: was im freien Gespräch auch passt (jeder Wert der Liste)
+  const ans = words(E.ok[0].a).join(" ");
+  const inAns = v && typeof v === "object" ? kwOf(v).filter(k => ans.includes(words(k).join(" "))) : [];
+  if (typeof x === "string") E.kw = E.any = ["name", x];
+  else if (inAns.length) { E.kw = inAns; E.any = (p.pool ? p.pool() : p.list()).flatMap(kwOf); }
+  else E.kw = E.any = content(E.ok[0].a);
+  if (p.pre != null) {
+    const pool = p.pool ? p.pool() : p.list();
+    const others = distinct(shuffle(pool.filter(y => y !== v && picKey(y) !== picKey(v))), 2, picKey);
+    E.frame = {
+      pre: val(p.pre, x),
+      hint: p.me ? em("🤔") : p.hint ? p.hint(x) : pic(v),
+      choices: shuffle([v, ...others]).map(y => ({ y, ok: y === v }))
+    };
+  }
+  return E;
+}
+
+/* =========================================================
+   Simon says
+   ========================================================= */
+/* Teile der Figur: Wort im Befehl, Bild für die Übersicht */
+const PARTS = [
+  { k: "head", en: "head", e: "🙂" }, { k: "hair", en: "hair", e: "💇" },
+  { k: "eyes", en: "eyes", e: "👀" }, { k: "ears", en: "ears", e: "👂" },
+  { k: "nose", en: "nose", e: "👃" }, { k: "mouth", en: "mouth", e: "👄" },
+  { k: "tummy", en: "tummy", e: "👕" }, { k: "arms", en: "arms", e: "💪" },
+  { k: "hands", en: "hands", e: "✋" }, { k: "legs", en: "legs", e: "🦵" },
+  { k: "feet", en: "feet", e: "🦶" }
+];
+const HEAD_PARTS = ["head", "hair", "eyes", "ears", "nose", "mouth"];
+
+/* Die Figur: grosser Kopf, damit Augen, Nase und Mund gut zu treffen sind.
+   Unsichtbare Flächen (fill transparent) vergrössern die Trefferzonen. */
+const FIGURE =
+  '<svg viewBox="0 0 220 320" role="img" aria-label="Kind zum Antippen">' +
+  '<g data-part="legs"><rect x="80" y="208" width="24" height="76" rx="10" fill="#4361ee"/>' +
+    '<rect x="116" y="208" width="24" height="76" rx="10" fill="#4361ee"/></g>' +
+  '<g data-part="feet"><ellipse cx="88" cy="294" rx="22" ry="11" fill="#e4572e"/>' +
+    '<ellipse cx="132" cy="294" rx="22" ry="11" fill="#e4572e"/>' +
+    '<rect x="60" y="282" width="100" height="26" fill="transparent"/></g>' +
+  '<g data-part="arms"><path d="M70 136 L36 196" stroke="#2a9d8f" stroke-width="20" stroke-linecap="round"/>' +
+    '<path d="M150 136 L184 196" stroke="#2a9d8f" stroke-width="20" stroke-linecap="round"/></g>' +
+  '<g data-part="hands"><circle cx="32" cy="206" r="16" fill="#f5c9a5"/><circle cx="188" cy="206" r="16" fill="#f5c9a5"/></g>' +
+  '<g data-part="tummy"><rect x="66" y="124" width="88" height="96" rx="26" fill="#2a9d8f"/>' +
+    '<circle cx="110" cy="182" r="5" fill="#1f7c71"/></g>' +
+  '<rect x="100" y="112" width="20" height="16" fill="#f5c9a5"/>' +
+  '<g data-part="ears"><circle cx="54" cy="74" r="14" fill="#f5c9a5"/><circle cx="166" cy="74" r="14" fill="#f5c9a5"/></g>' +
+  '<g data-part="head"><circle cx="110" cy="70" r="56" fill="#f5c9a5"/>' +
+    '<circle cx="80" cy="96" r="7" fill="#ffb4a2" opacity=".7"/><circle cx="140" cy="96" r="7" fill="#ffb4a2" opacity=".7"/></g>' +
+  '<g data-part="hair"><path d="M54 66 C54 18 166 18 166 66 C150 48 132 42 112 46 C96 34 72 44 54 66 Z" fill="#8d5524"/>' +
+    '<rect x="60" y="14" width="100" height="30" fill="transparent"/></g>' +
+  '<g data-part="eyes"><circle cx="88" cy="70" r="7" fill="#33404d"/><circle cx="132" cy="70" r="7" fill="#33404d"/>' +
+    '<circle cx="88" cy="70" r="15" fill="transparent"/><circle cx="132" cy="70" r="15" fill="transparent"/></g>' +
+  '<g data-part="nose"><ellipse cx="110" cy="88" rx="6" ry="5" fill="#e8a27f"/>' +
+    '<circle cx="110" cy="87" r="11" fill="transparent"/></g>' +
+  '<g data-part="mouth"><path d="M94 104 Q110 118 126 104" stroke="#c0392b" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+    '<rect x="90" y="99" width="40" height="20" fill="transparent"/></g>' +
+  "</svg>";
+
+/* Bewegungen zum Nachmachen (Thema Sport) */
+const MOVES = [
+  { en: "Jump!", e: "🧒", mv: "jump" },
+  { en: "Run!", e: "🏃", mv: "run" },
+  { en: "Clap your hands!", e: "👏", mv: "clap" },
+  { en: "Turn around!", e: "🧒", mv: "spin" },
+  { en: "Wave your hands!", e: "👋", mv: "wave" },
+  { en: "Stand on one leg!", e: "🦩", mv: "sway" },
+  { en: "Sit down!", e: "🧎", mv: "down" },
+  { en: "Stretch up high!", e: "🙆", mv: "stretch" },
+  { en: "Touch your toes!", e: "🙇", mv: "down" },
+  { en: "Swim!", e: "🏊", mv: "run" },
+  { en: "Kick the ball!", e: "⚽", mv: "jump" }
+];
+
+/* =========================================================
+   Bereiche und Spielarten
+   ========================================================= */
+const WORD_MODES = [
+  { k: "explore", icon: "👂", de: "Entdecken", noStars: true },
+  { k: "find",    icon: "🔍", de: "Hören & Finden" },
+  { k: "simon",   icon: "🙋", de: "Simon says", only: ["body", "sport"] },
+  { k: "memory",  icon: "🃏", de: "Memory" },
+  { k: "say",     icon: "🗣️", de: "Sag es!", rec: true }
+];
+
+const SENT_MODES = [
+  { k: "listen", icon: "👂", de: "Zuhören", noStars: true },
+  { k: "answer", icon: "💬", de: "Antwort finden" },
+  { k: "build",  icon: "🧩", de: "Satz bauen" },
+  { k: "repeat", icon: "🎤", de: "Nachsprechen" },
+  { k: "talk",   icon: "🗣️", de: "Gespräch", rec: true }
+];
+
+const AREAS = {
+  w: { icon: "🖼️", de: "Wörter", en: "Words", list: TOPICS, modes: WORD_MODES },
+  s: { icon: "💬", de: "Sätze", en: "Sentences", list: SITS, modes: SENT_MODES }
+};
+
+const PRAISE = ["Yes!", "Great!", "Well done!", "Super!", "Brilliant!", "Good job!", "Fantastic!", "Perfect!"];
+const PRAISE_EMOJI = ["⭐", "✨", "🌟", "🎉"];
+
+/* =========================================================
+   Speicher
+   ========================================================= */
+const STORE = "englischLernen";
+const STORE_V = 1;
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE)) || {}; }
+  catch (e) { return {}; }
+}
+
+function saveStore() {
+  try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* egal */ }
+}
+
+let store = loadStore();
+if (store.v !== STORE_V) store = { v: STORE_V };
+if (!store.profile || typeof store.profile !== "object") store.profile = { name: "", age: 0, country: "" };
+if (typeof store.asked !== "boolean") store.asked = false;      // Profil-Fragen schon gezeigt?
+if (typeof store.sound !== "boolean") store.sound = true;
+if (typeof store.rec !== "boolean") store.rec = false;            // Spracherkennung, standardmässig aus
+if (typeof store.showText !== "boolean") store.showText = false;
+if (typeof store.showDe !== "boolean") store.showDe = false;
+if (!["slow", "normal", "fast"].includes(store.speed)) store.speed = "normal";
+if (typeof store.voiceEn !== "string") store.voiceEn = "";      // "" = beste Stimme automatisch
+if (typeof store.voiceDe !== "string") store.voiceDe = "";
+if (!Array.isArray(store.hidden)) store.hidden = [];            // ausgeblendete Themen, z.B. "w:tech"
+if (!store.best) store.best = {};                               // "w:colors:find" → Sterne
+if (!store.weak) store.weak = {};                               // Wort → wie oft zuletzt falsch
+
+/* Das Profil – oder Sam, falls das Kind nichts eingegeben hat */
+function me() {
+  const p = store.profile;
+  return {
+    name: p.name || "Sam",
+    age: AGES.find(a => a.n === p.age) || AGES[2],
+    country: COUNTRY[p.country] || COUNTRY.gb,
+    real: !!p.name
+  };
+}
+
+/* =========================================================
+   Sprachausgabe
+   Englisch (britisch bevorzugt) für alles, was gelernt wird,
+   Deutsch für Anweisungen. say() spricht mehrere Teile nacheinander
+   und gibt ein Versprechen zurück, das danach erfüllt ist.
+   ========================================================= */
+const hasSpeech = "speechSynthesis" in window;
+const voices = { en: null, de: null };
+let utterance = null;      // festhalten, sonst räumt Chrome sie vorzeitig weg
+let sayGen = 0;
+
+const SPEED = { slow: .8, normal: 1, fast: 1.15 };
+const BEAR = { pitch: .7, rate: .8 };
+const KID = { pitch: 1.35, rate: .8 };
+
+function EN(t, o = {}) { return { t, lang: "en", rate: o.rate || .85, pitch: o.pitch || 1 }; }
+function DE(t) { return { t, lang: "de", rate: .95, pitch: 1 }; }
+
+/* Die Browser bieten viele Stimmen an und nehmen von sich aus gern
+   die schlechteste. Darum bekommt jede Stimme Punkte. */
+const ROBOT_VOICE = new RegExp("eloquence|\\b(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|albert|" +
+  "bahh|bells|boing|bubbles|cellos|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|" +
+  "kathy|ralph|bad news|good news)\\b", "i");
+
+function voiceQuality(v) {
+  const id = v.name + " " + v.voiceURI;
+  if (/premium/i.test(id))                 return 50;
+  if (/natural|neural/i.test(id))          return 45;    // Edge, Windows
+  if (/enhanced|erweitert/i.test(id))      return 40;    // Apple
+  if (/google/i.test(id))                  return 30;    // Chrome, Android
+  if (ROBOT_VOICE.test(id))                return -20;
+  if (/compact/i.test(id))                 return 0;
+  return 10;                                             // gewöhnliche Systemstimme
+}
+
+/* Englisch: am liebsten eine britische Frauenstimme, sonst die beste britische
+   Männerstimme. Klingt eine amerikanische Stimme deutlich besser (mindestens
+   20 Punkte, z.B. Google statt einfacher Systemstimme), dann amerikanisch.
+   Das Geschlecht verrät der Browser nicht – darum nach den bekannten Namen. */
+const FEMALE_EN = new RegExp("\\b(female|serena|kate|stephanie|martha|fiona|moira|sonia|libby|maisie|" +
+  "hollie|abbi|bella|olivia|hazel|susan|mia|emily|amy|samantha|ava|allison|zoe|karen|tessa|jenny|aria|" +
+  "michelle|sara|catherine|natasha|clara|emma)\\b", "i");
+const MALE_EN = new RegExp("\\b(male|daniel|arthur|oliver|ryan|thomas|alfie|elliot|ethan|noah|george|" +
+  "james|guy|tom|alex|aaron|fred|rishi|lee|gordon|evan|nathan)\\b", "i");
+const MUCH_BETTER = 20;
+
+function accentOf(v) {
+  return /^en[-_]GB/i.test(v.lang) ? "gb" : /^en[-_]US/i.test(v.lang) ? "us" : "other";
+}
+
+/* „female“ zuerst prüfen: „Google UK English Female“ enthält kein „male“-Wort */
+function genderBonus(v) {
+  const id = v.name + " " + v.voiceURI;
+  return FEMALE_EN.test(id) ? 15 : MALE_EN.test(id) ? -10 : 0;
+}
+
+/* In zwei Stufen: erst den Akzent wählen, dann darin die beste Stimme –
+   so kippt eine Frauenstimme nicht den Entscheid britisch/amerikanisch. */
+function rankEnglish(list) {
+  const best = a => Math.max(-99, ...list.filter(v => accentOf(v) === a).map(voiceQuality));
+  const want = best("us") >= best("gb") + MUCH_BETTER ? "us" : "gb";
+  const key = v => (accentOf(v) === want ? 1000 : 0) + voiceQuality(v) + genderBonus(v) +
+                   ({ gb: 6, us: 3, other: 0 })[accentOf(v)];
+  return list.sort((a, b) => key(b) - key(a));
+}
+
+function voiceScore(v) {
+  return voiceQuality(v) + (/^de[-_]CH/i.test(v.lang) ? 5 : 0);
+}
+
+const GOOD_VOICE = 30;
+
+function voiceId(v) { return v.voiceURI || v.name; }
+
+function voicesFor(lang) {
+  const re = lang === "en" ? /^en([-_]|$)/i : /^de([-_]|$)/i;
+  const list = speechSynthesis.getVoices().filter(v => re.test(v.lang));
+  return lang === "en" ? rankEnglish(list) : list.sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
+/* Die Eltern können in den Einstellungen selber wählen; sonst die beste. */
+function pickVoices() {
+  for (const lang of ["en", "de"]) {
+    const list = voicesFor(lang);
+    const want = lang === "en" ? store.voiceEn : store.voiceDe;
+    voices[lang] = list.find(v => voiceId(v) === want) || list[0] || null;
+    paintVoiceSelect(lang, list);
+  }
+  paintVoiceNotes();
+}
+
+function utter(p) {
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(p.t);
+    utterance = u;
+    const v = voices[p.lang];
+    u.lang = v ? v.lang.replace("_", "-") : p.lang === "en" ? "en-GB" : "de-DE";
+    if (v) u.voice = v;
+    u.rate = p.rate * SPEED[store.speed];
+    u.pitch = p.pitch;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      resolve();
+    };
+    // Manche Browser melden das Ende nie – dann hilft die Uhr.
+    const guard = setTimeout(finish, 2500 + p.t.length * 110 / u.rate);
+    u.onend = finish;
+    u.onerror = finish;
+    speechSynthesis.speak(u);
+  });
+}
+
+/* Teile: EN(…), DE(…) oder Funktionen (z.B. ein Klang), auch verschachtelt */
+function say(...parts) {
+  const my = ++sayGen;
+  if (hasSpeech) speechSynthesis.cancel();
+  speakBtn.classList.add("talking");
+  return (async () => {
+    for (const p of parts.flat(2)) {
+      if (my !== sayGen) return;
+      if (typeof p === "function") await p();
+      else if (p && p.t && hasSpeech) await utter(p);
+    }
+    if (my === sayGen) speakBtn.classList.remove("talking");
+  })();
+}
+
+function hush() {
+  sayGen++;
+  if (hasSpeech) speechSynthesis.cancel();
+  speakBtn.classList.remove("talking");
+}
+
+/* =========================================================
+   Ton: kurze Töne, Instrumente, Fahrzeuge
+   Alles wird im Browser erzeugt (Web Audio), ohne Tondateien.
+   ========================================================= */
+let audio = null;
+let noiseBuf = null;
+
+function ac() {
+  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state === "suspended") audio.resume();
+  return audio;
+}
+
+/* Hüllkurve: schnell an, bei hold gehalten, dann ausklingen */
+function envelope(c, t, o) {
+  const g = c.createGain(), v = o.v || .2, a = o.a || .01, d = o.d || .3;
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + a);
+  if (o.hold) g.gain.setValueAtTime(v, t + Math.max(a, d - .12));
+  g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  return g;
+}
+
+/* Filter und Tremolo (Lautstärke-Zittern) einschleifen */
+function chain(c, t, node, o) {
+  if (o.lp || o.bp || o.hp) {
+    const f = c.createBiquadFilter();
+    f.type = o.bp ? "bandpass" : o.hp ? "highpass" : "lowpass";
+    f.frequency.setValueAtTime(o.bp || o.hp || o.lp, t);
+    if (o.sweep) f.frequency.exponentialRampToValueAtTime(o.sweep, t + o.d);
+    f.Q.value = o.q || 1;
+    node.connect(f);
+    node = f;
+  }
+  if (o.trem) {
+    const tg = c.createGain(), l = c.createOscillator(), lg = c.createGain();
+    tg.gain.value = .5;
+    l.frequency.value = o.trem;
+    lg.gain.value = .5;
+    l.connect(lg).connect(tg.gain);
+    l.start(t);
+    l.stop(t + o.d + .05);
+    node.connect(tg);
+    node = tg;
+  }
+  return node;
+}
+
+function tone(o) {
+  const c = ac(), t = c.currentTime + (o.at || 0), d = o.d || .3;
+  o.d = d;
+  const osc = c.createOscillator();
+  osc.type = o.type || "sine";
+  osc.frequency.setValueAtTime(o.f, t);
+  if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + d);
+  if (o.det) osc.detune.value = o.det;
+  if (o.vib) {
+    const l = c.createOscillator(), lg = c.createGain();
+    l.frequency.value = o.vib;
+    lg.gain.value = o.f * .012;
+    l.connect(lg).connect(osc.frequency);
+    l.start(t);
+    l.stop(t + d + .05);
+  }
+  chain(c, t, osc, o).connect(envelope(c, t, o)).connect(c.destination);
+  osc.start(t);
+  osc.stop(t + d + .05);
+}
+
+function noise(o) {
+  const c = ac(), t = c.currentTime + (o.at || 0);
+  o.d = o.d || .2;
+  if (!noiseBuf) {
+    noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+    const ch = noiseBuf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  }
+  const s = c.createBufferSource();
+  s.buffer = noiseBuf;
+  s.loop = true;
+  chain(c, t, s, o).connect(envelope(c, t, o)).connect(c.destination);
+  s.start(t);
+  s.stop(t + o.d + .05);
+}
+
+/* Gezupfte Saite (Karplus-Strong) für die Gitarre */
+function pluck(f, at, v = .3) {
+  const c = ac(), sr = c.sampleRate, n = Math.round(sr / f), len = Math.round(sr * 1.4);
+  const buf = c.createBuffer(1, len, sr), out = buf.getChannelData(0);
+  const ring = new Float32Array(n);
+  for (let i = 0; i < n; i++) ring[i] = Math.random() * 2 - 1;
+  for (let i = 0, p = 0; i < len; i++) {
+    const nx = (p + 1) % n;
+    out[i] = ring[p];
+    ring[p] = .498 * (ring[p] + ring[nx]);
+    p = nx;
+  }
+  const s = c.createBufferSource(), g = c.createGain();
+  s.buffer = buf;
+  g.gain.value = v;
+  s.connect(g).connect(c.destination);
+  s.start(c.currentTime + at);
+}
+
+function melody(notes, step, fn) { notes.forEach((f, i) => fn(f, i * step, i)); }
+
+/* Jeder Klang gibt seine Dauer in Sekunden zurück. */
+const SOUNDS = {
+  music: {
+    piano: () => {
+      melody([262, 330, 392, 523], .24, (f, at) => {
+        tone({ type: "triangle", f, at, d: 1, v: .22, a: .005 });
+        tone({ f: f * 2, at, d: .5, v: .05, a: .005 });
+      });
+      return 1.8;
+    },
+    guitar: () => {
+      [0, .6].forEach(s => [196, 247, 294, 392].forEach((f, i) => pluck(f, s + i * .035)));
+      return 2;
+    },
+    drum: () => {
+      [0, .3, .9].forEach(at => tone({ f: 150, f2: 45, at, d: .35, v: .7, a: .003 }));
+      [.6, 1.2].forEach(at => noise({ bp: 1800, q: .7, at, d: .16, v: .5, a: .002 }));
+      return 1.5;
+    },
+    violin: () => {
+      melody([392, 587, 494], .6, (f, at) =>
+        tone({ type: "sawtooth", f, at, d: .62, v: .1, a: .14, hold: true, vib: 5.5, lp: 3000 }));
+      return 1.9;
+    },
+    trumpet: () => {
+      [[523, 0, .2], [523, .25, .2], [784, .5, .7]].forEach(([f, at, d]) =>
+        tone({ type: "sawtooth", f, at, d, v: .14, a: .03, hold: true, bp: 1300, q: .8 }));
+      return 1.3;
+    },
+    saxophone: () => {
+      melody([294, 349, 440, 392], .32, (f, at) =>
+        tone({ type: "square", f, at, d: .36, v: .09, a: .05, hold: true, lp: 1400, vib: 5 }));
+      return 1.5;
+    },
+    recorder: () => {
+      melody([784, 880, 988, 784], .3, (f, at) => {
+        tone({ f, at, d: .32, v: .2, a: .04, hold: true, vib: 4.5 });
+        noise({ hp: 3000, at, d: .2, v: .015 });
+      });
+      return 1.4;
+    },
+    accordion: () => {
+      [262, 330, 392].forEach(f => [-9, 9].forEach(det =>
+        tone({ type: "sawtooth", f, det, d: 1.4, v: .05, a: .1, hold: true, lp: 2000, trem: 6 })));
+      return 1.5;
+    },
+    maracas: () => {
+      [0, .2, .4, .5, .6].forEach(at => noise({ hp: 5000, at, d: .08, v: .35, a: .002 }));
+      return .8;
+    },
+    singing: () => {
+      melody([392, 440, 494, 392], .34, (f, at) =>
+        tone({ type: "sawtooth", f, at, d: .32, v: .18, a: .05, hold: true, vib: 5, bp: 900, q: 3 }));
+      return 1.5;
+    }
+  },
+  traffic: {
+    car: () => {
+      [0, .4].forEach(at => [415, 520].forEach(f =>
+        tone({ type: "square", f, at, d: .28, v: .06, a: .01, hold: true, lp: 2000 })));
+      return .8;
+    },
+    bus: () => {
+      [233, 294].forEach(f => tone({ type: "square", f, d: .75, v: .07, a: .02, hold: true, lp: 1500 }));
+      return .9;
+    },
+    train: () => {
+      [880, 1110].forEach(f => tone({ f, d: .8, v: .1, a: .03, hold: true }));
+      [1, 1.25, 1.5, 1.75].forEach(at => noise({ bp: 600, at, d: .18, v: .35, a: .01 }));
+      return 2;
+    },
+    tram: () => {
+      [0, .35].forEach(at => {
+        tone({ f: 1250, at, d: .8, v: .2, a: .002 });
+        tone({ f: 3100, at, d: .4, v: .05, a: .002 });
+      });
+      return 1.2;
+    },
+    bike: () => {
+      [0, .18].forEach(at => {
+        tone({ f: 2600, at, d: .5, v: .15, a: .002 });
+        tone({ f: 3700, at, d: .3, v: .05, a: .002 });
+      });
+      return .8;
+    },
+    motorbike: () => {
+      tone({ type: "sawtooth", f: 70, f2: 190, d: 1.3, v: .15, a: .05, hold: true, lp: 900 });
+      return 1.4;
+    },
+    plane: () => {
+      noise({ lp: 300, sweep: 2000, d: 1.7, v: .45, a: .4, hold: true });
+      return 1.8;
+    },
+    boat: () => {
+      [110, 113].forEach(f => tone({ type: "sawtooth", f, d: 1.4, v: .12, a: .1, hold: true, lp: 500 }));
+      return 1.5;
+    },
+    helicopter: () => {
+      noise({ lp: 500, d: 1.6, v: .7, a: .1, hold: true, trem: 13 });
+      return 1.7;
+    },
+    tractor: () => {
+      tone({ type: "square", f: 55, d: 1.4, v: .18, a: .05, hold: true, lp: 300, trem: 7 });
+      return 1.5;
+    },
+    "fire engine": () => {
+      melody([440, 587, 440, 587], .45, (f, at) =>
+        tone({ type: "triangle", f, at, d: .45, v: .2, a: .02, hold: true }));
+      return 1.9;
+    },
+    "traffic light": () => {
+      [0, .3, .6].forEach(at => tone({ f: 880, at, d: .12, v: .15, a: .005 }));
+      return .8;
+    }
+  }
+};
+
+/* Klang zu einem Wort – als Teil für say(), wartet bis er fertig ist */
+function soundOf(x, tk = topic && topic.k) {
+  const fn = store.sound && SOUNDS[tk] && SOUNDS[tk][x.en];
+  if (!fn) return [];
+  return () => {
+    try { return sleep(fn() * 1000); }
+    catch (e) { return Promise.resolve(); }
+  };
+}
+
+function beep(freq, dur) {
+  if (!store.sound) return;
+  try { tone({ f: freq, d: dur, v: .16, a: .01 }); } catch (e) { /* ohne Ton weiterspielen */ }
+}
+
+function chime() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.16), i * 130));
+}
+
+/* =========================================================
+   Spracherkennung (optional)
+   Das Spiel funktioniert vollständig ohne. Eingeschaltet wird sie in den
+   Einstellungen; fehlt sie oder klemmt sie, geht es still ohne weiter.
+   ========================================================= */
+const RecAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recNow = null;         // die laufende Erkennung
+let recBroken = "";        // Fehler in dieser Sitzung – dann ohne Mikrofon weiter
+let lastHeard = "";        // für die Eltern: was zuletzt erkannt wurde
+
+function recProblem() {
+  if (!RecAPI) return "Dieser Browser unterstützt keine Spracherkennung (z.B. Firefox). " +
+                      "Am besten Chrome oder Edge verwenden, auf dem iPad Safari.";
+  if (location.protocol === "file:") return "Die Seite ist als Datei geöffnet (file://). Für das Mikrofon " +
+                      "muss sie über https:// oder einen lokalen Server laufen.";
+  return "";
+}
+
+function recOn() { return store.rec && !recProblem() && !recBroken; }
+
+const REC_ERRORS = {
+  "not-allowed": "Das Mikrofon ist nicht erlaubt. Bitte im Browser den Zugriff erlauben (Safari: zusätzlich „Diktieren“ einschalten).",
+  "service-not-allowed": "Die Spracherkennung ist nicht erlaubt (Safari: „Diktieren“ einschalten).",
+  "audio-capture": "Es wurde kein Mikrofon gefunden.",
+  "network": "Keine Verbindung zum Erkennungsdienst – die Spracherkennung braucht Internet.",
+  "language-not-supported": "Englisch wird von dieser Spracherkennung nicht unterstützt.",
+  "start": "Die Spracherkennung liess sich nicht starten."
+};
+
+function recMessage(code) { return REC_ERRORS[code] || "Die Spracherkennung meldet einen Fehler (" + code + ")."; }
+
+/* Einmal zuhören. Ergebnis: { alts: [bis 5 Vorschläge] } oder { error } */
+function listen() {
+  return new Promise(resolve => {
+    let rec;
+    try { rec = new RecAPI(); } catch (e) { resolve({ error: "start" }); return; }
+    recNow = rec;
+    const v = voices.en;
+    rec.lang = v && /^en[-_]/i.test(v.lang) ? v.lang.replace("_", "-") : "en-GB";
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.maxAlternatives = 5;
+    const alts = [];
+    let done = false, stopT = 0, endT = 0;
+    const finish = r => {
+      if (done) return;
+      done = true;
+      clearTimeout(stopT);
+      clearTimeout(endT);
+      if (recNow === rec) recNow = null;
+      resolve(r);
+    };
+    rec.onresult = e => {
+      for (let i = 0; i < e.results.length; i++) {
+        for (let j = 0; j < e.results[i].length; j++) {
+          const t = e.results[i][j].transcript;
+          if (t && t.trim()) alts.push(t.trim());
+        }
+      }
+    };
+    rec.onerror = e => finish({ error: e.error, alts });
+    rec.onend = () => finish({ alts });
+    // Endet das Sprechen nicht von selbst: nach 6 Sekunden aufhören.
+    stopT = setTimeout(() => { try { rec.stop(); } catch (e) { /* schon fertig */ } }, 6000);
+    endT = setTimeout(() => finish({ alts }), 8000);
+    try { rec.start(); } catch (e) { finish({ error: "start" }); }
+  });
+}
+
+function stopListening() {
+  if (!recNow) return;
+  try { recNow.abort(); } catch (e) { /* schon fertig */ }
+  recNow = null;
+}
+
+/* ---------- Grosszügig vergleichen ----------
+   Kleinschreibung, ohne Satzzeichen, Zahlen als Wörter, ähnlich
+   klingende Wörter zählen. Es reicht ein Schlüsselwort. */
+const STOP = new Set("i im id ive a an the to you my is are it its some please me and too of in on at by this do".split(" "));
+const SAME = { "1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven",
+               "8": "eight", "9": "nine", "10": "ten", "11": "eleven", "12": "twelve",
+               to: "two", too: "two", for: "four", ate: "eight", won: "one",
+               gray: "grey", mom: "mum", mommy: "mum", daddy: "dad", favorite: "favourite", color: "colour" };
+
+function words(s) {
+  return String(s).toLowerCase().replace(/[.’']/g, "").replace(/[^a-z0-9äöüé]+/g, " ").trim().split(" ").filter(Boolean);
+}
+
+function content(s) { return words(s).filter(w => !STOP.has(w)); }
+
+function kwOf(v) { return [v.en, v.say, v.pl, v.play].filter(Boolean); }
+
+function lev(a, b) {
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0];
+    d[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = d[j];
+      d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return d[b.length];
+}
+
+function near(w, k) {
+  if (w === k) return true;
+  const tol = k.length <= 2 ? 0 : k.length <= 5 ? 1 : 2;
+  return lev(w, k) <= tol;
+}
+
+function heard(alts, kws) {
+  for (const alt of alts) {
+    const said = words(alt).map(w => SAME[w] || w);
+    const joined = said.join(" ");
+    for (const kw of kws) {
+      const want = words(kw).map(w => SAME[w] || w).filter(w => !STOP.has(w));
+      if (!want.length) continue;
+      if (joined.includes(want.join(" "))) return true;
+      if (want.some(k => said.some(w => near(w, k)))) return true;
+    }
+  }
+  return false;
+}
+
+/* ---------- Mikrofon im Spiel ---------- */
+function micRender(act, left = "", right = "") {
+  act.innerHTML =
+    '<div class="ctrl">' + left +
+      '<button class="mic" id="micBtn" aria-label="Ins Mikrofon sprechen">🎤</button>' + right +
+    "</div>" +
+    '<p class="heard" id="heard" aria-live="polite"></p>' +
+    '<button class="ok-btn ready" id="okBtn" aria-label="Weiter" hidden>✔️</button>';
+  $("micBtn").onclick = micTurn;
+  $("okBtn").onclick = e => { if (!busy) solved(e.currentTarget); };
+  // Ist das Mikrofon in dieser Runde ausgefallen, geht es mit dem Haken weiter.
+  if (!recOn()) {
+    $("micBtn").disabled = true;
+    $("okBtn").hidden = false;
+    task.errors = 1;
+  }
+}
+
+async function micTurn() {
+  const t = task, b = $("micBtn");
+  if (!t || busy || !b || b.classList.contains("rec")) return;
+  const r = await micTry(t.kws);
+  if (task !== t || busy) return;
+  if (r === true) { solved(b); return; }
+
+  const ok = $("okBtn");
+  if (r === "broken") {
+    t.errors = Math.max(t.errors, 1);
+    b.disabled = true;
+    ok.hidden = false;
+    say(DE("Das Mikrofon geht gerade nicht. Tipp auf den Haken."));
+    return;
+  }
+  // Nach zwei Versuchen kein „falsch“, sondern Lob – und weiter geht's.
+  t.errors++;
+  if (t.errors >= 2) {
+    ok.hidden = false;
+    say(DE("Gut probiert!"), t.model || []);
+  } else {
+    say(EN("Try again!"), t.retry || []);
+  }
+}
+
+async function micTry(kws) {
+  const b = $("micBtn"), out = $("heard");
+  hush();
+  b.classList.add("rec");
+  out.classList.remove("warn");
+  out.textContent = "";
+  const res = await listen();
+  b.classList.remove("rec");
+  if (res.error && res.error !== "no-speech" && res.error !== "aborted") {
+    recBroken = recMessage(res.error);
+    out.classList.add("warn");
+    out.textContent = "⚠️ " + recBroken;
+    return "broken";
+  }
+  const alts = res.alts || [];
+  if (alts.length) lastHeard = alts[0];
+  out.textContent = alts.length ? "🎤 „" + alts[0] + "“" : "🎤 …";
+  return heard(alts, kws);
+}
+
+/* =========================================================
+   Elemente und Zustand
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const meBtn       = $("meBtn");
+const backBtn     = $("backBtn");
+const speakBtn    = $("speakBtn");
+const progressBox = $("progress");
+const topbar      = document.querySelector(".topbar");
+const screen      = $("screen");
+const settings    = $("settings");
+
+let view = "home";     // profile | home | topics | modes | explore | memory | listen | task | end
+let area = "w";        // w = Wörter, s = Sätze
+let topic = null;      // Thema bzw. Situation
+let mode = null;       // Spielart
+let flow = 0;          // jeder Wechsel erhöht flow – alte Zeitgeber laufen dann ins Leere
+let round = null;
+let task = null;
+let busy = false;      // während Lob und Übergang keine Eingaben
+let again = null;      // was der Lautsprecher wiederholt
+
+/* Alles Laufende anhalten, bevor eine neue Ansicht kommt */
+function leave() {
+  flow++;
+  hush();
+  stopListening();
+  round = null;
+  task = null;
+  busy = false;
+  again = null;
+}
+
+function setBar(back, speaker, cells = 0) {
+  topbar.hidden = !back && !speaker && !cells;
+  backBtn.hidden = !back;
+  speakBtn.hidden = !speaker;
+  progressBox.replaceChildren();
+  progressBox.style.setProperty("--n", cells);
+  for (let i = 0; i < cells; i++) progressBox.appendChild(document.createElement("i"));
+}
+
+function paintProgress() {
+  [...progressBox.children].forEach((el, i) => {
+    el.className = !round ? ""
+                 : i < round.results.length ? round.results[i]
+                 : i === round.results.length && view === "task" ? "now" : "";
+  });
+}
+
+function starsHTML(n) {
+  let s = "";
+  for (let i = 0; i < 3; i++) s += i < n ? "<span>⭐</span>" : '<span class="off">⭐</span>';
+  return s;
+}
+
+function starKey(a, t, m) { return a + ":" + t.k + ":" + m.k; }
+
+function modesOf(a, t) {
+  return AREAS[a].modes.filter(m => (!m.only || m.only.includes(t.k)) && (!m.rec || recOn()));
+}
+
+function topicStars(a, t) {
+  return Math.max(0, ...modesOf(a, t).map(m => store.best[starKey(a, t, m)] || 0));
+}
+
+function visible(a) { return AREAS[a].list.filter(t => !store.hidden.includes(a + ":" + t.k)); }
+
+function paintMe() {
+  const p = store.profile;
+  const bits = [p.name ? esc(p.name) : "Wer bin ich?"];
+  if (p.age) bits.push(p.age);
+  meBtn.innerHTML = "🧒 " + bits.join(" · ") + (COUNTRY[p.country] ? " " + flagSVG(p.country) : "");
+}
+
+/* =========================================================
+   Profil: Name, Alter, Land
+   ========================================================= */
+let draft = null;      // Auswahl beim Alter bzw. Land, bis ✔️
+
+function showProfile(step = 0) {
+  leave();
+  view = "profile";
+  setBar(store.asked, true, 3);
+  [...progressBox.children].forEach((el, i) => { el.className = i < step ? "good" : i === step ? "now" : ""; });
+  draft = null;
+
+  const skip = '<button class="round-btn small" id="skipBtn" aria-label="Überspringen">⏭️</button>';
+  const ok = dis => '<button class="round-btn go" id="okBtn" aria-label="Fertig"' + (dis ? " disabled" : "") + ">✔️</button>";
+
+  if (step === 0) {
+    screen.innerHTML =
+      '<div class="view">' +
+        '<div class="wiz-icon" aria-hidden="true">🧒</div>' +
+        '<input class="name-in" id="nameIn" maxlength="20" autocomplete="off" autocapitalize="words" ' +
+          'spellcheck="false" aria-label="Dein Name" value="' + esc(store.profile.name) + '">' +
+        '<div class="wiz-btns">' + skip + ok(false) + "</div>" +
+      "</div>";
+    const input = $("nameIn");
+    const done = async () => {
+      const name = input.value.trim().replace(/\s+/g, " ");
+      if (!name) { showProfile(1); return; }
+      store.profile.name = cap(name);
+      saveStore();
+      paintMe();
+      input.blur();
+      const my = flow;
+      await say(EN("Hello, " + store.profile.name + "!"));
+      if (my === flow) showProfile(1);
+    };
+    $("okBtn").onclick = done;
+    input.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); done(); } };
+    if (matchMedia("(pointer: fine)").matches) input.focus();
+    again = () => DE("Wie heisst du? Schreib deinen Namen. Dann tipp auf den Haken.");
+  } else if (step === 1) {
+    screen.innerHTML =
+      '<div class="view">' +
+        '<div class="wiz-icon" aria-hidden="true">🎂</div>' +
+        '<div class="age-grid">' +
+          AGES.map(a => '<button class="pick-btn" data-n="' + a.n + '" aria-pressed="' + (a.n === store.profile.age) +
+            '" aria-label="' + a.n + ' Jahre"><span class="pic">' + numPic(a.n) + "</span></button>").join("") +
+        "</div>" +
+        '<div class="wiz-btns">' + skip + ok(!store.profile.age) + "</div>" +
+      "</div>";
+    draft = store.profile.age || null;
+    screen.querySelectorAll(".pick-btn").forEach(b => {
+      b.onclick = () => {
+        draft = Number(b.dataset.n);
+        screen.querySelectorAll(".pick-btn").forEach(x => x.setAttribute("aria-pressed", x === b));
+        $("okBtn").disabled = false;
+        say(EN(NUM_EN[draft]));
+      };
+    });
+    $("okBtn").onclick = async () => {
+      store.profile.age = draft;
+      saveStore();
+      paintMe();
+      const my = flow;
+      await say(EN("I'm " + NUM_EN[draft] + " years old."));
+      if (my === flow) showProfile(2);
+    };
+    again = () => DE("Wie alt bist du? Tipp auf deine Zahl.");
+  } else {
+    screen.innerHTML =
+      '<div class="view">' +
+        '<div class="wiz-icon" aria-hidden="true">🏠</div>' +
+        '<div class="flag-grid">' +
+          COUNTRIES.map(c => '<button class="pick-btn" data-k="' + c.k + '" aria-pressed="' + (c.k === store.profile.country) +
+            '" aria-label="' + c.de + '"><span class="pic">' + flagSVG(c.k) + "</span>" +
+            (store.showDe ? "<small>" + c.de + "</small>" : "") + "</button>").join("") +
+        "</div>" +
+        '<div class="wiz-btns">' + skip + ok(!store.profile.country) + "</div>" +
+      "</div>";
+    draft = store.profile.country || null;
+    screen.querySelectorAll(".pick-btn").forEach(b => {
+      b.onclick = () => {
+        draft = b.dataset.k;
+        screen.querySelectorAll(".pick-btn").forEach(x => x.setAttribute("aria-pressed", x === b));
+        $("okBtn").disabled = false;
+        say(EN(COUNTRY[draft].say || COUNTRY[draft].en));
+      };
+    });
+    $("okBtn").onclick = async () => {
+      store.profile.country = draft;
+      saveStore();
+      paintMe();
+      const my = flow;
+      await say(EN("I live in " + COUNTRY[draft].en + "."));
+      if (my === flow) finishProfile();
+    };
+    again = () => DE("Wo wohnst du? Tipp auf die Flagge.");
+  }
+
+  $("skipBtn").onclick = () => step < 2 ? showProfile(step + 1) : finishProfile();
+  say(again());
+}
+
+function finishProfile() {
+  store.asked = true;
+  saveStore();
+  showHome(true);
+}
+
+/* =========================================================
+   Menüs: Start, Themen, Spielarten
+   ========================================================= */
+function showHome(greet) {
+  leave();
+  view = "home";
+  setBar(false, false);
+  const m = me();
+  screen.innerHTML =
+    '<div class="view">' +
+      (m.real ? '<p class="hello-line">Hello, ' + esc(m.name) + "! 👋</p>" : "") +
+      '<div class="areas">' +
+        Object.entries(AREAS).map(([k, a]) =>
+          '<button class="area-btn" data-a="' + k + '" aria-label="' + a.de + '">' +
+            '<span class="ar-icon" aria-hidden="true">' + a.icon + "</span>" +
+            '<span class="ar-name">' + a.de + "</span>" +
+          "</button>").join("") +
+      "</div>" +
+    "</div>";
+  screen.querySelectorAll(".area-btn").forEach(b => {
+    b.onclick = () => { area = b.dataset.a; showTopics(EN(AREAS[area].en)); };
+  });
+  again = () => DE("Möchtest du Wörter lernen oder Sätze?");
+  if (greet) say(m.real ? EN("Let's play, " + m.name + "!") : [], again());
+}
+
+function showTopics(intro) {
+  leave();
+  view = "topics";
+  setBar(true, true);
+  const list = visible(area);
+  if (!list.length) {
+    screen.innerHTML =
+      '<div class="view"><div class="wiz-icon" aria-hidden="true">🙈</div>' +
+      '<p class="parent-note">Alle Themen sind ausgeblendet. In den Einstellungen lassen sie sich wieder einschalten.</p>' +
+      '<button class="small-btn" id="toSettings">⚙️ Themen wählen</button></div>';
+    $("toSettings").onclick = openSettings;
+    return;
+  }
+  screen.innerHTML =
+    '<div class="view"><div class="tiles-grid">' +
+      list.map((t, i) =>
+        '<button class="tile-btn" data-i="' + i + '" aria-label="' + t.de + '">' +
+          '<span class="t-icon" aria-hidden="true">' + t.icon + "</span>" +
+          '<span class="t-name">' + (store.showText ? t.en : t.de) + "</span>" +
+          '<span class="lv-stars" aria-hidden="true">' + starsHTML(topicStars(area, t)) + "</span>" +
+        "</button>").join("") +
+    "</div></div>";
+  screen.querySelectorAll(".tile-btn").forEach(b => {
+    b.onclick = () => { topic = list[Number(b.dataset.i)]; showModes(EN(topic.en)); };
+  });
+  again = () => DE("Such dir ein Thema aus.");
+  say(intro || [], again());
+}
+
+function showModes(intro) {
+  leave();
+  view = "modes";
+  setBar(true, true);
+  const modes = modesOf(area, topic);
+  screen.innerHTML =
+    '<div class="view">' +
+      '<div class="topic-head"><span class="t-icon" aria-hidden="true">' + topic.icon + "</span>" +
+        labels(topic.en, topic.de) + "</div>" +
+      '<div class="modes-grid">' +
+        modes.map((m, i) =>
+          '<button class="mode-btn" data-i="' + i + '" aria-label="' + m.de + '">' +
+            '<span class="m-icon" aria-hidden="true">' + m.icon + "</span>" +
+            '<span class="m-name">' + m.de + "</span>" +
+            (m.noStars ? "" : '<span class="lv-stars" aria-hidden="true">' +
+              starsHTML(store.best[starKey(area, topic, m)] || 0) + "</span>") +
+          "</button>").join("") +
+      "</div>" +
+    "</div>";
+  screen.querySelectorAll(".mode-btn").forEach(b => {
+    b.onclick = () => { mode = modes[Number(b.dataset.i)]; startMode(); };
+  });
+  again = () => DE("Was möchtest du spielen?");
+  say(intro || [], again());
+}
+
+function startMode() {
+  if (mode.k === "explore") showExplore();
+  else if (mode.k === "memory") showMemory();
+  else if (mode.k === "listen") showListen();
+  else startRound();
+}
+
+function goBack() {
+  if (view === "profile" || view === "topics") showHome();
+  else if (view === "modes") showTopics();
+  else if (view === "home") return;
+  else showModes();
+}
+
+/* =========================================================
+   Entdecken: Bild antippen, Wort hören
+   ========================================================= */
+function showExplore() {
+  leave();
+  view = "explore";
+  setBar(true, true);
+  const items = topic.items;
+  screen.innerHTML =
+    '<div class="view">' +
+      '<button class="small-btn" id="playAll">▶ Alle anhören</button>' +
+      '<div class="ex-grid">' +
+        items.map((x, i) =>
+          '<button class="ex-card" data-i="' + i + '" aria-label="' + esc(x.en) + '">' +
+            '<span class="pic">' + pic(x) + "</span>" + labels(x.en, x.de) +
+          "</button>").join("") +
+      "</div>" +
+    "</div>";
+  const cards = [...screen.querySelectorAll(".ex-card")];
+  let chainNo = 0;
+
+  const hear = (x, el) => {
+    cards.forEach(c => c.classList.remove("on"));
+    void el.offsetWidth;
+    el.classList.add("on");
+    return say(EN(x.en), soundOf(x)).then(() => el.classList.remove("on"));
+  };
+
+  cards.forEach((el, i) => { el.onclick = () => { chainNo++; hear(items[i], el); }; });
+
+  $("playAll").onclick = async () => {
+    const my = ++chainNo, f = flow;
+    for (let i = 0; i < items.length; i++) {
+      if (my !== chainNo || f !== flow) return;
+      cards[i].scrollIntoView({ block: "nearest", behavior: "smooth" });
+      await hear(items[i], cards[i]);
+      await sleep(250);
+    }
+  };
+
+  again = () => DE("Tipp auf ein Bild und hör gut zu.");
+  say(again());
+}
+
+/* =========================================================
+   Memory: Paare finden, beim Aufdecken wird das Wort gesprochen
+   ========================================================= */
+function showMemory() {
+  leave();
+  view = "memory";
+  const pairs = distinct(shuffle(topic.items), 6, picKey);
+  setBar(true, true, pairs.length);
+  round = { n: 0, len: pairs.length, results: [], labels: [], moves: 0, first: null, lock: false };
+  const cards = shuffle([...pairs, ...pairs]);
+
+  screen.innerHTML =
+    '<div class="view"><div class="mem-grid">' +
+      cards.map((x, i) =>
+        '<button class="mem" data-i="' + i + '" aria-label="Karte ' + (i + 1) + '">' +
+          '<span class="mem-in"><span class="mem-back" aria-hidden="true">❓</span>' +
+          '<span class="mem-front"><span class="pic">' + pic(x) + "</span></span></span>" +
+        "</button>").join("") +
+    "</div></div>";
+
+  const my = flow;
+  screen.querySelectorAll(".mem").forEach(el => {
+    el.onclick = () => {
+      const x = cards[Number(el.dataset.i)];
+      if (round.lock || el.classList.contains("open")) return;
+      el.classList.add("open");
+      el.setAttribute("aria-label", x.en);
+      say(EN(x.en));
+      if (!round.first) { round.first = { el, x }; return; }
+
+      const first = round.first;
+      round.first = null;
+      round.moves++;
+      if (first.x === x) {
+        first.el.classList.add("done");
+        el.classList.add("done");
+        round.results.push("good");
+        round.labels.push('<span class="pic">' + pic(x) + "</span>");
+        round.n++;
+        burst(el);
+        beep(880, .1);
+        paintProgress();
+        if (round.n === round.len) {
+          round.lock = true;
+          setTimeout(() => {
+            if (my !== flow) return;
+            const stars = round.moves <= round.len + 3 ? 3 : round.moves <= round.len * 2 + 2 ? 2 : 1;
+            showEnd(stars);
+          }, 1300);
+        }
+      } else {
+        round.lock = true;
+        setTimeout(() => {
+          if (my !== flow) return;
+          first.el.classList.remove("open");
+          el.classList.remove("open");
+          first.el.setAttribute("aria-label", "Karte");
+          el.setAttribute("aria-label", "Karte");
+          round.lock = false;
+        }, 1300);
+      }
+    };
+  });
+
+  again = () => DE("Deck zwei Karten auf und finde die Paare.");
+  say(again());
+}
+
+/* =========================================================
+   Zuhören: ein kleines Gespräch zwischen Teddy und dem Kind
+   ========================================================= */
+function showListen() {
+  leave();
+  view = "listen";
+  setBar(true, false);
+  const kid = "🧒";
+  const lines = [];
+  topic.pairs.forEach((_, i) => {
+    const E = exchange(topic, i);
+    const ans = pick(E.ok);
+    lines.push({ who: "bear", t: E.q, d: E.qd, p: E.qp }, { who: "kid", t: ans.a, d: ans.d, p: ans.p });
+  });
+
+  screen.innerHTML =
+    '<div class="view">' +
+      '<div class="chat">' +
+        lines.map((l, i) =>
+          '<div class="line ' + l.who + '">' +
+            '<span class="who" aria-hidden="true">' + (l.who === "bear" ? "🐻" : kid) + "</span>" +
+            '<button class="bubble ' + l.who + '" data-i="' + i + '" aria-label="' + esc(l.t) + '">' +
+              '<span class="pic">' + l.p + "</span>" +
+              (store.showText || store.showDe ? "<span>" + labels(l.t, l.d) + "</span>" : "") +
+            "</button>" +
+          "</div>").join("") +
+      "</div>" +
+      '<div class="ctrl">' +
+        '<button class="round-btn small" id="replay" aria-label="Nochmals abspielen">▶</button>' +
+        '<button class="round-btn small" id="slow" aria-label="Langsam abspielen">🐢</button>' +
+        '<button class="round-btn go" id="doneBtn" aria-label="Fertig">✔️</button>' +
+      "</div>" +
+    "</div>";
+
+  const rows = [...screen.querySelectorAll(".line")];
+  let chainNo = 0;
+  const voiceOf = (l, slow) => EN(l.t, Object.assign({}, l.who === "bear" ? BEAR : KID, slow ? { rate: .55 } : {}));
+
+  const play = async slow => {
+    const my = ++chainNo, f = flow;
+    rows.forEach(r => r.classList.remove("seen", "now"));
+    for (let i = 0; i < lines.length; i++) {
+      if (my !== chainNo || f !== flow) return;
+      rows.forEach(r => r.classList.remove("now"));
+      rows[i].classList.add("seen", "now");
+      rows[i].scrollIntoView({ block: "nearest", behavior: "smooth" });
+      await say(voiceOf(lines[i], slow));
+      await sleep(350);
+    }
+    if (my === chainNo) rows.forEach(r => r.classList.remove("now"));
+  };
+
+  screen.querySelectorAll(".bubble").forEach(b => {
+    b.onclick = () => {
+      chainNo++;
+      const i = Number(b.dataset.i);
+      rows.forEach(r => r.classList.remove("now"));
+      rows[i].classList.add("seen", "now");
+      say(voiceOf(lines[i])).then(() => rows[i].classList.remove("now"));
+    };
+  });
+  $("replay").onclick = () => play(false);
+  $("slow").onclick = () => play(true);
+  $("doneBtn").onclick = () => showModes();
+
+  const my = flow;
+  say(DE("Hör gut zu, was Teddy und du sagen.")).then(() => { if (my === flow) play(false); });
+}
+
+/* =========================================================
+   Runden mit Aufgaben
+   Jede Aufgabe ist ein Objekt mit:
+     key, label        – Schlüssel für die Wiederholung, Bild für die Übersicht
+     stim              – was oben gezeigt wird (HTML)
+     options           – Antwortknöpfe { html, correct, aria, preview }
+     confirm           – erst anhören, dann bestätigen (Antwort finden)
+     render(act)       – eigene Bedienung (Figur, Bewegung, Nachsprechen)
+     intro, say()      – Erklärung vor der ersten Aufgabe / Ansage
+     extra             – wird nach dem Lob gesagt
+     done()            – nach der richtigen Antwort (z.B. Lücke füllen)
+   ========================================================= */
+function roundLength() {
+  if (mode.k === "repeat" || mode.k === "talk") return 6;
+  if (mode.k === "simon" && topic.k === "sport") return 8;
+  return ROUND;
+}
+
+function startRound() {
+  leave();
+  round = { n: 0, len: roundLength(), results: [], labels: [], recent: [] };
+  setBar(true, true, round.len);
+  again = () => task ? task.say() : [];
+  nextTask();
+}
+
+function nextTask() {
+  busy = false;
+  if (round.n >= round.len) { endRound(); return; }
+  task = makeTask();
+  task.errors = 0;
+  round.recent.push(task.key);
+  view = "task";
+  renderTask();
+  paintProgress();
+  const first = round.n === 0;
+  const t = task, my = flow;
+  say(first && t.intro ? DE(t.intro) : [], t.say()).then(() => {
+    if (my === flow && task === t && t.ready) t.ready();
+  });
+}
+
+function makeTask() {
+  if (mode.k === "find") return findTask();
+  if (mode.k === "simon") return topic.k === "sport" ? moveTask() : bodyTask();
+  if (mode.k === "answer") return answerTask();
+  if (mode.k === "build") return buildTask();
+  if (mode.k === "say") return sayTask();
+  if (mode.k === "talk") return talkTask();
+  return repeatTask();
+}
+
+/* Zieht ein Element; was zuletzt falsch war, kommt häufiger. Was in dieser
+   Runde schon dran war, kommt erst wieder, wenn sonst nichts übrig ist. */
+function pickWeighted(items, keyOf) {
+  let cand = items.filter(it => !round.recent.includes(keyOf(it)));
+  if (!cand.length) {
+    const avoid = round.recent.slice(-Math.min(3, items.length - 1));
+    cand = items.filter(it => !avoid.includes(keyOf(it)));
+  }
+  if (!cand.length) cand = items;
+  const weights = cand.map(it => 1 + 2 * (store.weak[keyOf(it)] || 0));
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < cand.length; i++) {
+    r -= weights[i];
+    if (r < 0) return cand[i];
+  }
+  return cand[cand.length - 1];
+}
+
+/* ---------- Hören & Finden ---------- */
+function findTask() {
+  const items = topic.items;
+  const it = pickWeighted(items, x => x.key);
+  // Musik: jede zweite Aufgabe nur mit Klang – „Welches Instrument hörst du?“
+  const bySound = topic.k === "music" && store.sound && SOUNDS.music[it.en] && round.n % 2 === 1;
+  const n = round.n < 5 ? 3 : 4;
+  const others = distinct(shuffle(items.filter(x => x !== it && picKey(x) !== picKey(it))), n - 1, picKey);
+  return {
+    key: it.key, weakKey: it.key, label: '<span class="pic">' + pic(it) + "</span>",
+    stim: '<button class="listen" data-repeat aria-label="Nochmals hören">' + (bySound ? "🎵" : "👂") + "</button>",
+    options: shuffle([it, ...others]).map(x => ({
+      html: '<span class="pic">' + pic(x) + "</span>" + labels(x.en, x.de), correct: x === it, aria: x.en
+    })),
+    intro: "Hör gut zu und tipp auf das richtige Bild.",
+    say: () => bySound ? [DE("Welches Instrument hörst du?"), soundOf(it)] : [EN(it.en)],
+    extra: [EN(it.en)]
+  };
+}
+
+/* ---------- Simon says: Körperteile an der Figur antippen ---------- */
+function bodyTask() {
+  const part = pickWeighted(PARTS, x => "part:" + x.k);
+  const cmd = "Simon says: touch your " + part.en + "!";
+  return {
+    key: "part:" + part.k, weakKey: "part:" + part.k, label: '<span class="pic">' + em(part.e) + "</span>",
+    stim: "", part,
+    intro: "Simon sagt dir, wo du hintippen sollst. Hör gut zu.",
+    say: () => [EN(cmd)],
+    extra: [EN(cap(part.en) + "!")],
+    render: act => {
+      act.innerHTML = '<div class="figure">' + FIGURE + "</div>";
+      const fig = act.querySelector(".figure");
+      fig.querySelector("svg").addEventListener("click", e => {
+        const g = e.target.closest("[data-part]");
+        if (!g || busy) return;
+        const hit = g.dataset.part;
+        const ok = hit === part.k || (part.k === "head" && HEAD_PARTS.includes(hit));
+        if (ok) { fig.querySelectorAll(".blink").forEach(x => x.classList.remove("blink")); solved(g); return; }
+        miss(fig);
+        if (task.errors >= 2) {
+          fig.querySelector('[data-part="' + part.k + '"]').classList.add("blink");
+          say(DE("Schau, hier!"), EN(cmd));
+        } else {
+          say(EN("Try again!"), EN(cmd));
+        }
+      });
+    }
+  };
+}
+
+/* ---------- Simon says: Bewegungen nachmachen (Sport) ---------- */
+function moveTask() {
+  const mv = pickWeighted(MOVES, x => "move:" + x.en);
+  return {
+    key: "move:" + mv.en, label: '<span class="pic">' + em(mv.e) + "</span>",
+    stim: '<span class="moves mv-' + mv.mv + '" aria-hidden="true">' + mv.e + "</span>",
+    intro: "Mach nach, was Simon sagt. Dann tipp auf den Haken.",
+    say: () => [EN("Simon says: " + mv.en.charAt(0).toLowerCase() + mv.en.slice(1))],
+    extra: [],
+    render: act => {
+      act.innerHTML = '<button class="ok-btn" id="okBtn" aria-label="Gemacht" disabled>✔️</button>';
+      $("okBtn").onclick = e => { if (!busy) solved(e.currentTarget); };
+    },
+    // Der Haken kommt erst nach dem Befehl – sonst tippt man, ohne zu turnen.
+    ready: () => setTimeout(() => {
+      const b = $("okBtn");
+      if (b) { b.disabled = false; b.classList.add("ready"); }
+    }, 1200)
+  };
+}
+
+/* ---------- Sätze: Frage-Antwort-Paar wählen ---------- */
+function pickExchange(filter) {
+  const idx = topic.pairs.map((_, i) => i).filter(i => !filter || filter(topic.pairs[i]));
+  let E = null;
+  for (let tries = 0; tries < 8; tries++) {
+    E = exchange(topic, pick(idx));
+    if (!round.recent.slice(-2).includes(E.key)) break;
+  }
+  return E;
+}
+
+function sceneHTML(E, right) {
+  return '<div class="scene">' +
+    '<div class="actor"><button class="bubble" data-repeat aria-label="' + esc(E.q) + '">' +
+      '<span class="pic">' + E.qp + "</span>" + labels(E.q, E.qd) + "</button>" +
+      '<span class="who" aria-hidden="true">🐻</span></div>' +
+    (right || "") +
+  "</div>";
+}
+
+/* Die Sprechblase des Bären hüpft, solange er spricht */
+function bearSays(E) {
+  return [() => { const w = screen.querySelector(".scene .who"); if (w) w.classList.add("talk"); },
+          EN(E.q, BEAR),
+          () => { const w = screen.querySelector(".scene .who"); if (w) w.classList.remove("talk"); }];
+}
+
+/* ---------- Antwort finden ---------- */
+function answerTask() {
+  const E = pickExchange();
+  // Falsche Antworten aus anderen Situationen – die passen sicher nicht.
+  const okPics = E.ok.map(o => o.p);
+  const wrong = [];
+  for (const s of shuffle(SITS.filter(s => s !== topic && !(topic.clash || []).includes(s.k)))) {
+    if (wrong.length >= 3 - E.ok.length) break;
+    const W2 = exchange(s, Math.floor(Math.random() * s.pairs.length));
+    const o = pick(W2.ok);
+    if (okPics.includes(o.p) || wrong.some(w => w.p === o.p)) continue;
+    wrong.push(o);
+  }
+  const opts = shuffle([...E.ok.map(o => ({ o, correct: true })), ...wrong.map(o => ({ o, correct: false }))]);
+  return {
+    key: E.key, label: '<span class="pic">' + E.ok[0].p + "</span>",
+    stim: sceneHTML(E),
+    confirm: true,
+    options: opts.map(({ o, correct }) => ({
+      html: '<span class="pic">' + o.p + "</span>" + labels(o.a, o.d), correct, aria: o.a,
+      preview: EN(o.a, KID), answer: o
+    })),
+    intro: "Teddy fragt dich etwas. Tipp auf eine Antwort und hör zu. Passt sie, tipp auf den Haken.",
+    say: () => bearSays(E),
+    extra: []
+  };
+}
+
+/* ---------- Satz bauen ---------- */
+function buildTask() {
+  const E = pickExchange(p => p.pre != null);
+  const F = E.frame;
+  const ans = E.ok[0];
+  return {
+    key: E.key, label: '<span class="pic">' + ans.p + "</span>",
+    stim: sceneHTML(E,
+      '<div class="actor"><span class="bubble think" aria-hidden="true">' +
+        (F.hint.startsWith('<span class="pic') ? F.hint : '<span class="pic">' + F.hint + "</span>") +
+      '</span><span class="who" aria-hidden="true">🧒</span></div>'),
+    pre: F.pre,
+    options: F.choices.map(c => ({
+      html: '<span class="pic">' + pic(c.y) + "</span>" + labels(c.y.en, c.y.de), correct: c.ok, aria: c.y.en
+    })),
+    intro: "Hör zu. Welches Bild passt in den Satz?",
+    say: () => [bearSays(E), F.pre ? EN(F.pre + " …", KID) : []],
+    extra: [EN(ans.a, KID)],
+    render: act => {
+      act.insertAdjacentHTML("afterbegin",
+        '<div class="strip"><span class="who" aria-hidden="true">🧒</span><span class="em pic" aria-hidden="true">💬</span>' +
+        '<span class="gap" id="gap">?</span>' + (store.showText ? labels(F.pre) : "") + "</div>");
+    },
+    done: () => {
+      const g = $("gap");
+      g.innerHTML = '<span class="pic">' + pic(F.choices.find(c => c.ok).y) + "</span>";
+      g.classList.add("filled");
+      const lbl = screen.querySelector(".strip .lbl");
+      if (lbl) lbl.textContent = ans.a;
+    }
+  };
+}
+
+/* ---------- Nachsprechen ---------- */
+function repeatTask() {
+  const E = pickExchange();
+  const ans = E.ok[0];
+  const kidBubble =
+    '<div class="actor"><button class="bubble kid" id="kidBubble" aria-label="' + esc(ans.a) + '">' +
+      '<span class="pic">' + ans.p + "</span>" + labels(ans.a, ans.d) + "</button>" +
+    '<span class="who" aria-hidden="true">🧒</span></div>';
+  return {
+    key: E.key, label: '<span class="pic">' + ans.p + "</span>",
+    stim: sceneHTML(E, kidBubble),
+    intro: recOn() ? "Hör zu und sprich nach. Drück zuerst auf das Mikrofon." :
+                     "Hör zu und sprich nach. Dann tipp auf den Haken.",
+    say: () => [bearSays(E), EN(ans.a, KID)],
+    extra: [],
+    kws: E.kw,
+    retry: [EN(ans.a, KID)],
+    render: act => {
+      const hearAns = slow => say(EN(ans.a, Object.assign({}, KID, slow ? { rate: .5 } : {})));
+      $("kidBubble").onclick = () => hearAns(false);
+      if (recOn()) {
+        micRender(act,
+          '<button class="round-btn small" id="again" aria-label="Nochmals hören">🔊</button>',
+          '<button class="round-btn small" id="slow" aria-label="Langsam">🐢</button>');
+        $("again").onclick = () => hearAns(false);
+        $("slow").onclick = () => hearAns(true);
+        return;
+      }
+      act.innerHTML =
+        '<div class="ctrl">' +
+          '<button class="round-btn small" id="again" aria-label="Nochmals hören">🔊</button>' +
+          '<button class="round-btn small" id="slow" aria-label="Langsam">🐢</button>' +
+          '<button class="ok-btn" id="okBtn" aria-label="Nachgesprochen" disabled>✔️</button>' +
+        "</div>";
+      $("again").onclick = () => hearAns(false);
+      $("slow").onclick = () => hearAns(true);
+      $("okBtn").onclick = e => { if (!busy) solved(e.currentTarget); };
+    },
+    ready: () => recOn() ? null : setTimeout(() => {
+      const b = $("okBtn");
+      if (b) { b.disabled = false; b.classList.add("ready"); }
+    }, 1500)
+  };
+}
+
+/* ---------- Sag es! (nur mit Spracherkennung) ---------- */
+function sayTask() {
+  const it = pickWeighted(topic.items, x => x.key);
+  return {
+    key: it.key, weakKey: it.key, label: '<span class="pic">' + pic(it) + "</span>",
+    stim: '<div class="big-pic"><span class="pic">' + pic(it) + "</span>" + labels(null, it.de) + "</div>",
+    intro: "Sag das englische Wort. Drück zuerst auf das Mikrofon.",
+    say: () => [DE("Wie heisst das auf Englisch?")],
+    kws: [it.en],
+    retry: [DE("Hör zu:"), EN(it.en)],
+    model: [EN(it.en)],
+    extra: [EN(it.en)],
+    render: act => {
+      micRender(act, "", '<button class="round-btn small" id="hintBtn" aria-label="Hilfe: Wort anhören">💡</button>');
+      // Hilfe holen ist erlaubt – zählt dann aber nicht als „auf Anhieb“.
+      $("hintBtn").onclick = () => { task.errors = Math.max(task.errors, 1); say(EN(it.en)); };
+    }
+  };
+}
+
+/* ---------- Gespräch (nur mit Spracherkennung) ---------- */
+const REACT = ["Great!", "Cool!", "Wow!", "Lovely!", "Super!", "Thank you!"];
+
+function talkTask() {
+  const E = pickExchange();
+  const kid = '<div class="actor"><span class="bubble think" aria-hidden="true"><span class="pic">💭</span></span>' +
+              '<span class="who" aria-hidden="true">🧒</span></div>';
+  const react = E.sit.k === "hello" && E.pi === 1 ? "Nice to meet you, " + me().name + "!" : pick(REACT);
+  return {
+    key: E.key, label: '<span class="pic">' + E.qp + "</span>",
+    stim: sceneHTML(E, kid),
+    intro: "Teddy fragt dich etwas. Drück auf das Mikrofon und antworte auf Englisch.",
+    say: () => bearSays(E),
+    kws: E.any,
+    retry: [EN(E.q, BEAR)],
+    model: [DE("Du kannst zum Beispiel sagen:"), EN(E.ok[0].a, KID)],
+    extra: [EN(react, BEAR)],
+    render: act => micRender(act)
+  };
+}
+
+/* =========================================================
+   Aufgabe zeigen und Antworten
+   ========================================================= */
+function renderTask() {
+  screen.innerHTML =
+    '<div class="task t-' + mode.k + '">' +
+      (task.stim ? '<div class="stim">' + task.stim + "</div>" : "") +
+      '<div class="act"></div>' +
+    "</div>";
+  const act = screen.querySelector(".act");
+
+  if (task.options) {
+    const box = document.createElement("div");
+    box.className = "opts";
+    box.style.setProperty("--cols", task.options.length);
+    task.options.forEach(o => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.innerHTML = o.html;
+      if (o.aria) b.setAttribute("aria-label", o.aria);
+      b.onclick = () => tap(b, o);
+      o.el = b;
+      box.appendChild(b);
+    });
+    act.appendChild(box);
+    if (task.confirm) {
+      act.insertAdjacentHTML("beforeend", '<button class="ok-btn" id="okBtn" aria-label="Diese Antwort" disabled>✔️</button>');
+      $("okBtn").onclick = () => { if (task.sel) decide(task.sel, task.sel._o); };
+    }
+  }
+  if (task.render) task.render(act);
+
+  screen.querySelectorAll("[data-repeat]").forEach(el => { el.onclick = () => say(task.say()); });
+}
+
+/* Antwort finden: erstes Tippen = anhören, zweites Tippen oder ✔️ = wählen */
+function tap(btn, o) {
+  if (busy || btn.disabled) return;
+  if (task.confirm && task.sel !== btn) {
+    if (task.sel) task.sel.classList.remove("sel");
+    task.sel = btn;
+    btn._o = o;
+    btn.classList.add("sel");
+    const ok = $("okBtn");
+    ok.disabled = false;
+    ok.classList.add("ready");
+    say(o.preview);
+    return;
+  }
+  decide(btn, o);
+}
+
+function decide(btn, o) {
+  if (busy || btn.disabled) return;
+  if (o.correct) {
+    if (task.confirm && o.answer) task.extra = [EN(o.answer.a, KID)];
+    solved(btn);
+    return;
+  }
+
+  miss(btn);
+  btn.disabled = true;
+  btn.classList.add("dim");
+  btn.classList.remove("sel");
+  if (task.confirm) {
+    task.sel = null;
+    $("okBtn").disabled = true;
+    $("okBtn").classList.remove("ready");
+  }
+
+  // Nach zwei Fehlversuchen (oder wenn nur noch richtige übrig sind)
+  // zeigen wir die Lösung – das Kind tippt sie dann selber an.
+  const left = task.options.filter(x => !x.el.disabled);
+  if (task.errors >= 2 || left.every(x => x.correct)) {
+    task.options.forEach(x => {
+      if (x.correct) x.el.classList.add("show-me");
+      else { x.el.disabled = true; x.el.classList.add("dim"); }
+    });
+    say(DE("Schau, das hier passt."));
+  } else {
+    say(EN("Try again!"));
+  }
+}
+
+function miss(el) {
+  task.errors++;
+  el.classList.remove("bad");
+  void el.offsetWidth;               // Animation neu starten
+  el.classList.add("bad");
+  beep(220, 0.16);
+  if (task.errors === 1 && task.weakKey) {
+    store.weak[task.weakKey] = Math.min(5, (store.weak[task.weakKey] || 0) + 2);
+    saveStore();
+  }
+}
+
+async function solved(el) {
+  busy = true;
+  const my = flow;
+  const res = task.errors === 0 ? "good" : "help";
+
+  if (res === "good" && store.weak[task.weakKey]) {
+    store.weak[task.weakKey]--;
+    if (!store.weak[task.weakKey]) delete store.weak[task.weakKey];
+    saveStore();
+  }
+
+  round.results.push(res);
+  round.labels.push(task.label);
+  round.n++;
+
+  if (el.classList.contains("opt")) {
+    el.classList.remove("show-me", "sel");
+    el.classList.add("good");
+    task.options.forEach(x => { if (x.el !== el) x.el.classList.add("dim"); });
+  }
+  if (task.done) task.done();
+  burst(el);
+  beep(880, 0.1);
+  paintProgress();
+
+  const praise = res === "good" ? pick(PRAISE) : "Yes!";
+  await Promise.all([say(EN(praise), task.extra), sleep(1300)]);
+  if (my !== flow) return;
+  await sleep(400);
+  if (my !== flow) return;
+  nextTask();
+}
+
+function endRound() {
+  const good = round.results.filter(r => r === "good").length;
+  const ratio = good / round.len;
+  const stars = mode.k === "repeat" || topic.k === "sport" && mode.k === "simon" ? 3
+              : ratio >= .9 ? 3 : ratio >= .6 ? 2 : 1;
+  showEnd(stars);
+}
+
+function showEnd(stars) {
+  view = "end";
+  task = null;
+  setBar(true, false, round.len);
+  paintProgress();
+  const key = starKey(area, topic, mode);
+  if (stars > (store.best[key] || 0)) { store.best[key] = stars; saveStore(); }
+
+  screen.innerHTML =
+    '<div class="view">' +
+      '<div class="end-title" aria-hidden="true">' + (stars === 3 ? "🏆" : "🎉") + "</div>" +
+      '<div class="stars" role="img" aria-label="' + stars + ' von 3 Sternen">' + starsHTML(stars) + "</div>" +
+      '<div class="recap">' +
+        round.labels.map((l, i) => '<span class="r ' + round.results[i] + '">' + l + "</span>").join("") +
+      "</div>" +
+      '<div class="wiz-btns">' +
+        '<button class="round-btn" id="againBtn" aria-label="Nochmal spielen">🔁</button>' +
+        '<button class="round-btn go" id="menuBtn" aria-label="Andere Spielart">' + topic.icon + "</button>" +
+      "</div>" +
+    "</div>";
+
+  $("againBtn").onclick = startMode;
+  $("menuBtn").onclick = () => showModes();
+
+  confettiAt(screen.querySelector(".stars"));
+  chime();
+  const m = me();
+  say(DE("Geschafft! Du hast " + (stars === 1 ? "einen Stern" : stars + " Sterne") + " bekommen."),
+      EN(m.real ? "Great job, " + m.name + "!" : "Great job!"));
+}
+
+/* ---------- Sternchen-Wirbel ---------- */
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function burst(el, count = 8) {
+  if (reduced || !el) return;
+  const r = el.getBoundingClientRect();
+  const box = document.createElement("div");
+  box.className = "burst";
+  box.style.left = (r.left + r.width / 2 + window.scrollX) + "px";
+  box.style.top  = (r.top + r.height / 2 + window.scrollY) + "px";
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement("span");
+    const a = (i / count) * 2 * Math.PI + Math.random() * .4;
+    const d = 70 + Math.random() * 50;
+    s.textContent = pick(PRAISE_EMOJI);
+    s.style.setProperty("--dx", Math.cos(a) * d + "px");
+    s.style.setProperty("--dy", Math.sin(a) * d + "px");
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 900);
+}
+
+function confettiAt(el) {
+  burst(el, 14);
+  setTimeout(() => { if (view === "end") burst(el, 10); }, 450);
+}
+
+/* =========================================================
+   Einstellungen (für Eltern)
+   ========================================================= */
+const setName    = $("setName");
+const setAge     = $("setAge");
+const setCountry = $("setCountry");
+
+setAge.innerHTML = '<option value="0">–</option>' + AGES.map(a => '<option value="' + a.n + '">' + a.n + "</option>").join("");
+setCountry.innerHTML = '<option value="">–</option>' +
+  COUNTRIES.map(c => '<option value="' + c.k + '">' + c.de + "</option>").join("");
+
+function paintProfileFields() {
+  setName.value = store.profile.name;
+  setAge.value = String(store.profile.age || 0);
+  setCountry.value = store.profile.country || "";
+}
+
+setName.oninput = () => { store.profile.name = setName.value.trim() ? cap(setName.value.trim()) : ""; saveStore(); paintMe(); };
+setAge.onchange = () => { store.profile.age = Number(setAge.value); saveStore(); paintMe(); };
+setCountry.onchange = () => { store.profile.country = setCountry.value; saveStore(); paintMe(); };
+
+$("profDel").onclick = () => {
+  store.profile = { name: "", age: 0, country: "" };
+  saveStore();
+  paintProfileFields();
+  paintMe();
+};
+
+$("profAgain").onclick = () => {
+  settings.dataset.next = "profile";
+  settings.close();
+};
+
+function paintTopicChecks() {
+  const box = $("topicChecks");
+  box.innerHTML = Object.entries(AREAS).map(([a, A]) =>
+    "<h3>" + A.icon + " " + A.de + "</h3>" +
+    A.list.map(t => '<label class="check"><input type="checkbox" data-k="' + a + ":" + t.k + '"' +
+      (store.hidden.includes(a + ":" + t.k) ? "" : " checked") + "> " + t.icon + " " + t.de + "</label>").join("")
+  ).join("");
+  box.querySelectorAll("input").forEach(i => {
+    i.onchange = () => {
+      store.hidden = store.hidden.filter(k => k !== i.dataset.k);
+      if (!i.checked) store.hidden.push(i.dataset.k);
+      saveStore();
+    };
+  });
+}
+
+$("topicsAll").onclick = () => { store.hidden = []; saveStore(); paintTopicChecks(); };
+$("topicsFew").onclick = () => {
+  const keep = ["w:colors", "w:numbers", "w:animals", "s:hello"];
+  store.hidden = Object.entries(AREAS).flatMap(([a, A]) => A.list.map(t => a + ":" + t.k)).filter(k => !keep.includes(k));
+  saveStore();
+  paintTopicChecks();
+};
+
+function paintVoiceSelect(lang, list) {
+  const sel = $(lang === "en" ? "voiceEn" : "voiceDe");
+  const want = lang === "en" ? store.voiceEn : store.voiceDe;
+  sel.replaceChildren();
+  sel.disabled = !list.length;
+  const auto = document.createElement("option");
+  auto.value = "";
+  auto.textContent = list.length ? "Automatisch: " + list[0].name : "keine Stimme gefunden";
+  sel.appendChild(auto);
+  list.forEach(v => {
+    const o = document.createElement("option");
+    o.value = voiceId(v);
+    const sc = voiceQuality(v);
+    o.textContent = v.name + " (" + v.lang.replace("_", "-") + ")" +
+                    (sc >= GOOD_VOICE ? " ⭐" : sc < 0 ? " – Roboter" : "");
+    sel.appendChild(o);
+  });
+  sel.value = list.some(v => voiceId(v) === want) ? want : "";
+}
+
+function paintVoiceNotes() {
+  for (const lang of ["en", "de"]) {
+    const note = $(lang === "en" ? "noteEn" : "noteDe");
+    const v = voices[lang];
+    const weak = v && voiceQuality(v) < GOOD_VOICE;
+    note.classList.toggle("warn", !hasSpeech || !v || (lang === "en" && weak));
+    note.textContent = !hasSpeech
+      ? "⚠️ Dieser Browser kann nicht vorlesen. Ohne Sprachausgabe lässt sich das Spiel kaum spielen."
+      : !v ? (lang === "en"
+          ? "⚠️ Es wurde keine englische Stimme gefunden – die Wörter klingen dann wohl deutsch. Bitte eine englische Stimme installieren (siehe unten)."
+          : "⚠️ Es wurde keine deutsche Stimme gefunden.")
+      : weak ? "Diese Stimme klingt eher blechern. Mit ⭐ markierte Stimmen klingen natürlicher."
+      : "⭐ Diese Stimme klingt natürlich.";
+  }
+}
+
+function openSettings() {
+  leave();
+  if (view === "task" || view === "end" || view === "memory") view = "modes-reset";
+  $("soundToggle").checked = store.sound;
+  $("textToggle").checked = store.showText;
+  $("deToggle").checked = store.showDe;
+  settings.querySelectorAll('input[name="speed"]').forEach(r => { r.checked = r.value === store.speed; });
+  paintProfileFields();
+  paintTopicChecks();
+  $("recResult").textContent = "";
+  paintRec();
+  // Stimmen kommen manchmal erst spät – beim Öffnen frisch einlesen
+  if (hasSpeech) pickVoices();
+  else { paintVoiceSelect("en", []); paintVoiceSelect("de", []); paintVoiceNotes(); }
+  settings.showModal();
+}
+
+const recToggle = $("recToggle");
+
+function paintRec() {
+  const why = recProblem();
+  recToggle.disabled = !!why;
+  recToggle.checked = store.rec && !why;
+  $("recTest").disabled = !!why;
+  const note = $("recNote");
+  note.classList.toggle("warn", !!why || !!recBroken);
+  note.textContent = why ? "⚠️ " + why
+    : recBroken ? "⚠️ " + recBroken + " Bis zum nächsten Test spielt Ihr Kind ohne Mikrofon weiter."
+    : store.rec ? "Eingeschaltet: Beim Nachsprechen hört das Spiel zu, dazu gibt es „Sag es!“ (Wörter) und „Gespräch“ (Sätze)."
+    : "Ausgeschaltet – alles funktioniert auch ohne.";
+  if (lastHeard && !$("recResult").textContent) $("recResult").textContent = "Zuletzt erkannt: „" + lastHeard + "“";
+}
+
+async function recTest() {
+  const out = $("recResult"), btn = $("recTest");
+  if (btn.disabled) return;
+  btn.disabled = true;
+  out.classList.remove("warn");
+  out.textContent = "🎤 Jetzt „Hello!“ sagen …";
+  const res = await listen();
+  btn.disabled = false;
+  if (res.error && res.error !== "no-speech" && res.error !== "aborted") {
+    recBroken = recMessage(res.error);
+    out.classList.add("warn");
+    out.textContent = "⚠️ " + recBroken;
+  } else if (!res.alts || !res.alts.length) {
+    out.textContent = "Es wurde nichts gehört. Nochmals versuchen und deutlich sprechen.";
+  } else {
+    recBroken = "";
+    lastHeard = res.alts[0];
+    out.textContent = (heard(res.alts, ["hello"]) ? "✅ Es klappt! " : "Nicht ganz – die Prüfung im Spiel ist aber grosszügig. ") +
+                      "Erkannt: „" + res.alts[0] + "“";
+  }
+  paintRec();
+}
+
+recToggle.onchange = () => {
+  store.rec = recToggle.checked;
+  saveStore();
+  paintRec();
+  // Beim Einschalten gleich testen – das fragt auch nach der Mikrofon-Erlaubnis.
+  if (store.rec) { recBroken = ""; recTest(); }
+};
+
+$("recTest").onclick = recTest;
+
+$("soundToggle").onchange = e => { store.sound = e.target.checked; saveStore(); };
+$("textToggle").onchange = e => { store.showText = e.target.checked; saveStore(); };
+$("deToggle").onchange = e => { store.showDe = e.target.checked; saveStore(); };
+settings.querySelectorAll('input[name="speed"]').forEach(r => {
+  r.onchange = () => { store.speed = r.value; saveStore(); say(EN("Hello! How are you?")); };
+});
+
+$("voiceEn").onchange = e => { store.voiceEn = e.target.value; saveStore(); pickVoices(); say(EN("Hello! My name is Teddy.")); };
+$("voiceDe").onchange = e => { store.voiceDe = e.target.value; saveStore(); pickVoices(); say(DE("Hör gut zu.")); };
+$("testEn").onclick = () => say(EN("Hello! My name is Teddy. I'd like some apples, please."));
+$("testDe").onclick = () => say(DE("Hör gut zu und tipp auf das richtige Bild."));
+
+$("resetBtn").onclick = () => {
+  if (!confirm("Alle Sterne und den Lernstand löschen?")) return;
+  store.best = {};
+  store.weak = {};
+  saveStore();
+};
+
+// Nach dem Schliessen gilt alles Neue: zurück ins passende Menü.
+settings.addEventListener("close", () => {
+  stopListening();
+  const next = settings.dataset.next;
+  delete settings.dataset.next;
+  paintMe();
+  if (next === "profile") showProfile(0);
+  else if (view === "topics") showTopics();
+  else if (view === "modes" || view === "modes-reset" || view === "explore" || view === "listen") {
+    if (topic && !store.hidden.includes(area + ":" + topic.k)) showModes();
+    else showTopics();
+  }
+  else if (view === "profile") showProfile(0);
+  else showHome();
+});
+
+$("settingsBtn").onclick = e => { e.currentTarget.blur(); openSettings(); };
+
+/* =========================================================
+   Bedienung
+   ========================================================= */
+speakBtn.onclick = () => {
+  speakBtn.blur();
+  if (again) say(again());
+};
+
+backBtn.onclick = () => { backBtn.blur(); goBack(); };
+meBtn.onclick = () => { meBtn.blur(); showProfile(0); };
+
+document.addEventListener("keydown", e => {
+  if (settings.open || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.matches("input, select, textarea")) return;
+  if (e.key >= "1" && e.key <= "9") {
+    const btns = [...screen.querySelectorAll(".opt, .pick-btn, .area-btn, .tile-btn, .mode-btn, .ex-card, .mem")];
+    const b = btns[Number(e.key) - 1];
+    if (b) { b.click(); e.preventDefault(); }
+  } else if (e.key === " ") {
+    if (!speakBtn.hidden) speakBtn.click();
+    e.preventDefault();
+  } else if (e.key === "Enter") {
+    const b = $("okBtn") || $("againBtn");
+    if (b && !b.disabled) { b.click(); e.preventDefault(); }
+  } else if (e.key === "Escape" || e.key === "Backspace") {
+    if (!backBtn.hidden) { goBack(); e.preventDefault(); }
+  }
+});
+
+if (hasSpeech) {
+  pickVoices();
+  speechSynthesis.onvoiceschanged = pickVoices;
+}
+
+paintMe();
+if (store.asked) showHome(); else showProfile(0);
+</script>
+</body>
+</html>
